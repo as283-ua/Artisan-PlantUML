@@ -7,6 +7,11 @@
             "As283\\ArtisanPlantuml\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "As283\\ArtisanPlantuml\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Andrejs Sikorskis",
@@ -14,5 +19,16 @@
         }
     ],
     "minimum-stability": "stable",
-    "require": {}
+    "repositories":[
+        {
+            "type": "vcs",
+            "url": "https://github.com/as283-ua/PlantUML-Processor.git"
+        }
+    ],
+    "require": {
+        "as283/plant-uml-processor": "dev-main"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.21"
+    }
 }
