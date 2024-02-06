@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3b1a4e46965f36c6524d3e38b023057d",
+    "content-hash": "b0da1e406f6d4d12ccb7acd6dc97e89d",
     "packages": [
         {
             "name": "as283/plant-uml-processor",
