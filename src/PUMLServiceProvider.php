@@ -5,7 +5,7 @@ namespace As283\ArtisanPlantuml;
 use Illuminate\Support\ServiceProvider;
 use As283\ArtisanPlantuml\FromPUML;
 
-class MyPackageServiceProvider extends ServiceProvider
+class PUMLServiceProvider extends ServiceProvider
 {
     public function boot()
     {
