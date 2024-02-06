@@ -29,5 +29,12 @@
     },
     "require-dev": {
         "orchestra/testbench": "^8.21"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "As283\\ArtisanPlantuml\\PUMLServiceProvider"
+            ]
+        }
     }
 }
