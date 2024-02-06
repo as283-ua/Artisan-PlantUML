@@ -18,7 +18,6 @@
             "email": "as283@alu.ua.es"
         }
     ],
-    "minimum-stability": "stable",
     "repositories":[
         {
             "type": "vcs",
