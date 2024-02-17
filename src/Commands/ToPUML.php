@@ -4,14 +4,14 @@ namespace As283\ArtisanPlantuml;
 
 use Illuminate\Console\Command;
 
-class FromPUML extends Command
+class ToPUML extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'make:from-puml';
+    protected $signature = 'make:to-puml';
 
     /**
      * The console command description.

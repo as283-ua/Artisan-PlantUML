@@ -12,6 +12,7 @@ class PUMLServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 FromPUML::class,
+                ToPUML::class
             ]);
         }
     }

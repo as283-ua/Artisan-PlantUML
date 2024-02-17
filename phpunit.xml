@@ -4,6 +4,7 @@
          bootstrap="vendor/autoload.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
+         displayDetailsOnTestsThatTriggerWarnings="true"
 >
   <testsuites>
     <testsuite name="Unit">
@@ -18,4 +19,5 @@
       <directory suffix=".php">./src</directory>
     </include>
   </source>
+  
 </phpunit>
