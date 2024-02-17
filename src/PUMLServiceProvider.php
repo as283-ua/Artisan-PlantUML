@@ -3,7 +3,8 @@
 namespace As283\ArtisanPlantuml;
 
 use Illuminate\Support\ServiceProvider;
-use As283\ArtisanPlantuml\FromPUML;
+use As283\ArtisanPlantuml\Commands\FromPUML;
+use As283\ArtisanPlantuml\Commands\ToPUML;
 
 class PUMLServiceProvider extends ServiceProvider
 {
