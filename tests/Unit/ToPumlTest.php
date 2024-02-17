@@ -1,14 +1,14 @@
 <?php
 namespace As283\ArtisanPlantuml\Tests;
 
-use As283\ArtisanPlantuml\Commands\FromPUML;
+use As283\ArtisanPlantuml\Commands\ToPUML;
 use PHPUnit\Framework\TestCase;
 
-class FromPumlTest extends TestCase
+class ToPumlTest extends TestCase
 {
     public function testParse()
     {
-        $cmd = new FromPUML();
+        $cmd = new ToPUML();
 
         $cmd->handle();
         $this->assertTrue(true);

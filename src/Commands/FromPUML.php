@@ -1,6 +1,6 @@
 <?php
 
-namespace As283\ArtisanPlantuml;
+namespace As283\ArtisanPlantuml\Commands;
 
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
