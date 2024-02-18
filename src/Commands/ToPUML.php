@@ -14,7 +14,7 @@ class ToPUML extends Command
      */
     protected $signature = 
     'make:to-puml
-    {file : The output filename for the PlantUML class diagram.}';
+    {file? : The output filename for the PlantUML class diagram.}';
 
     /**
      * The console command description.
@@ -35,6 +35,6 @@ class ToPUML extends Command
      */
     public function handle()
     {
-        //
+        echo "AAAAAAAAAAAAA" . $this->argument('file');
     }
 }

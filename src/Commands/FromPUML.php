@@ -14,7 +14,7 @@ class FromPUML extends Command
      */
     protected $signature = 
     'make:from-puml
-    {file : The filename of the PlantUML class diagram.}';
+    {file? : The filename of the PlantUML class diagram.}';
 
     
     /**
@@ -37,6 +37,7 @@ class FromPUML extends Command
      */
     public function handle()
     {
+        echo "AAAAAAAAAAAAA" . $this->argument('file');
         $pumlFile = fopen($this->argument('file'), "r") or die("Unable to open file!");
         $puml = fread($pumlFile,filesize($this->argument('file')));
 
