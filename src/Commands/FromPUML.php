@@ -12,14 +12,25 @@ class FromPUML extends Command
      *
      * @var string
      */
-    protected $signature = 'make:from-puml {file}';
+    protected $signature = 
+    'make:from-puml
+    {file : The filename of the PlantUML class diagram.}';
 
+    
     /**
      * The console command description.
      *
      * @var string
      */
     protected $description = 'Generate migrations and models from PlantUML file.';
+    
+    protected function promptForMissingArgumentsUsing()
+    {
+        return [
+            "file" => $this->ask("What is the filename of the PlantUML class diagram?")
+        ];
+    }
+
 
     /**
      * Execute the console command.
