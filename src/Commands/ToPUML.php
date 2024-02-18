@@ -4,8 +4,9 @@ namespace As283\ArtisanPlantuml\Commands;
 
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
+use Illuminate\Contracts\Console\PromptsForMissingInput;
 
-class ToPUML extends Command
+class ToPUML extends Command implements PromptsForMissingInput
 {
     /**
      * The name and signature of the console command.
@@ -14,7 +15,7 @@ class ToPUML extends Command
      */
     protected $signature = 
     'make:to-puml
-    {file? : The output filename for the PlantUML class diagram.}';
+    {file : The output filename for the PlantUML class diagram.}';
 
     /**
      * The console command description.
@@ -35,6 +36,12 @@ class ToPUML extends Command
      */
     public function handle()
     {
-        echo "AAAAAAAAAAAAA" . $this->argument('file');
+        if(file_exists($this->argument('file'))){
+            $overwrite = $this->choice("File " . $this->argument('file') . " already exists. Overwrite? (y/n)", ["y", "n"], 1);
+            if($overwrite == "n"){
+                $this->info("Cancelling operation.");
+                return 0;
+            }
+        }
     }
 }

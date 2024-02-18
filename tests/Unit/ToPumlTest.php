@@ -10,8 +10,10 @@ class ToPumlTest extends TestCase
         return ['As283\ArtisanPlantuml\PUMLServiceProvider'];
     }
 
-    public function testParse()
+    public function testCallCommand()
     {
-        $this->artisan("make:to-puml")->expectsQuestion("What is the output filename for the PlantUML class diagram?", "test.puml")->assertExitCode(1);
+        $this->
+        artisan("make:to-puml nonexistentfile.puml")->
+        assertExitCode(0);
     }
 }

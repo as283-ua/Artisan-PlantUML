@@ -4,8 +4,9 @@ namespace As283\ArtisanPlantuml\Commands;
 
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
+use Illuminate\Contracts\Console\PromptsForMissingInput;
 
-class FromPUML extends Command
+class FromPUML extends Command implements PromptsForMissingInput
 {
     /**
      * The name and signature of the console command.
@@ -14,7 +15,7 @@ class FromPUML extends Command
      */
     protected $signature = 
     'make:from-puml
-    {file? : The filename of the PlantUML class diagram.}';
+    {file : The filename of the PlantUML class diagram.}';
 
     
     /**
@@ -37,12 +38,18 @@ class FromPUML extends Command
      */
     public function handle()
     {
-        echo "AAAAAAAAAAAAA" . $this->argument('file');
-        $pumlFile = fopen($this->argument('file'), "r") or die("Unable to open file!");
+        $pumlFile = null;
+        try{
+            $pumlFile = fopen($this->argument('file'), "r");
+        } catch (\Exception $e) {
+            $this->error("File " . $this->argument('file') . " not found.");
+            return 1;
+        }
+
         $puml = fread($pumlFile,filesize($this->argument('file')));
 
         $schema = PlantUmlProcessor::parse($puml);
 
-        echo $schema;
+        $this->info($puml);
     }
 }
