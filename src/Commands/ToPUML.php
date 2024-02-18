@@ -27,7 +27,7 @@ class ToPUML extends Command implements PromptsForMissingInput
     protected function promptForMissingArgumentsUsing()
     {
         return [
-            "file" => $this->ask("What is the output filename for the PlantUML class diagram?")
+            "file" => "What is the output filename for the PlantUML class diagram?"
         ];
     }
 

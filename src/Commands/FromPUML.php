@@ -28,7 +28,7 @@ class FromPUML extends Command implements PromptsForMissingInput
     protected function promptForMissingArgumentsUsing()
     {
         return [
-            "file" => $this->ask("What is the filename of the PlantUML class diagram?")
+            "file" => "What is the filename of the PlantUML class diagram?"
         ];
     }
 
