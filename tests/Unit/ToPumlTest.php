@@ -1,16 +1,19 @@
 <?php
 namespace As283\ArtisanPlantuml\Tests;
 
-use As283\ArtisanPlantuml\Commands\ToPUML;
-use PHPUnit\Framework\TestCase;
+use Orchestra\Testbench\TestCase;
 
 class ToPumlTest extends TestCase
 {
-    public function testParse()
+    protected function getPackageProviders($app)
     {
-        $cmd = new ToPUML();
+        return ['As283\ArtisanPlantuml\PUMLServiceProvider'];
+    }
 
-        $cmd->handle();
-        $this->assertTrue(true);
+    public function testCallCommand()
+    {
+        $this->
+        artisan("make:to-puml nonexistentfile.puml")->
+        assertExitCode(0);
     }
 }
