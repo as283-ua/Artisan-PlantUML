@@ -26,8 +26,9 @@ class FromPUML extends Command
      */
     public function handle()
     {
-        $pumlFile = fopen($this->argument('file'), "r") or die("Unable to open file!");
+        $pumlFile = fopen($this->argument('file'), "r");
         $puml = fread($pumlFile,filesize($this->argument('file')));
+        fclose($pumlFile);
 
         $schema = PlantUmlProcessor::parse($puml);
 
