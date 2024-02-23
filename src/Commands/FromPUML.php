@@ -2,6 +2,7 @@
 
 namespace As283\ArtisanPlantuml\Commands;
 
+use As283\ArtisanPlantuml\Core\MigrationWriter;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
@@ -23,7 +24,7 @@ class FromPUML extends Command implements PromptsForMissingInput
      *
      * @var string
      */
-    protected $description = 'Generate migrations and models from PlantUML file.';
+    protected $description = 'Generate migrations and models from PlantUML file';
     
     protected function promptForMissingArgumentsUsing()
     {
@@ -50,6 +51,17 @@ class FromPUML extends Command implements PromptsForMissingInput
         fclose($pumlFile);
 
         $schema = PlantUmlProcessor::parse($puml);
+
+        if($schema == null){
+            $this->error("Parsing error. Invalid PlantUML file.");
+            return 1;
+        }
+
+        $this->info("Generating models and migrations:");
+        
+        foreach ($schema->classes as $class) {
+            MigrationWriter::write($class);
+        }
 
         $this->info($puml);
     }

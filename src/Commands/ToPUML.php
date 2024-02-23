@@ -22,7 +22,7 @@ class ToPUML extends Command implements PromptsForMissingInput
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Create a .puml file from database migrations and models';
 
     protected function promptForMissingArgumentsUsing()
     {
