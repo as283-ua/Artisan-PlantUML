@@ -65,10 +65,14 @@ class FromPUML extends Command implements PromptsForMissingInput
             return 1;
         }
 
+        // usort($schema->classes, function($a, $b){
+        //     return $a->name <=> $b->name;
+        // });
+
         $this->info("Generating models and migrations:");
         
         foreach ($schema->classes as $class) {
-            MigrationWriter::write($class, $this, $this->option('path'));
+            MigrationWriter::writeCreateMigrations($class, $this, $this->option('path'));
         }
 
         $this->info($puml);

@@ -6,7 +6,7 @@ use Orchestra\Testbench\TestCase;
 class FromPumlTest extends TestCase
 {
     const OUT_DIR = "tests/Unit/Resources/out";
-    
+
     protected function getPackageProviders($app)
     {
         return ['As283\ArtisanPlantuml\PUMLServiceProvider'];
@@ -43,6 +43,18 @@ class FromPumlTest extends TestCase
         
         $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
         $this->cleanOutFiles();
+
+        $this->assertNotNull($migration);
+    }
+
+    public function testMigrationWithConstraints()
+    {
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/address2.puml --path=" . self::OUT_DIR)->
+        assertExitCode(0);
+        
+        $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
+        // $this->cleanOutFiles();
 
         $this->assertNotNull($migration);
     }

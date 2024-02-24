@@ -64,6 +64,23 @@ class MigrationWriter
         fwrite($file, "    public function up(): void\n");
         fwrite($file, "    {\n");
     }
+
+    /**
+     * @param ClassMetadata $class
+     * @return string[] List of fields that are part of the primary key 
+     */
+    private static function classKeys($class){
+        $keys = [];
+        foreach($class->fields as $field){
+            if($field->primary){
+                $keys[] = $field->name;
+            } else if($field->name == "id"){
+                $field->primary = true;
+                return [$field->name];
+            }
+        }
+        return $keys;
+    }
     
     /**
      * Generate the up method for the migration
@@ -72,16 +89,16 @@ class MigrationWriter
      * @param Command $command
      * @return void
      */
-    private static function writeUp($file, $class, $command)
+    private static function writeUp($file, $class, $command, $usesTimeStamps = true)
     {
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
         
-        $usesId = true;
+        $classKeys = self::classKeys($class);
+        $usesId = $classKeys == [] || $classKeys[0] === "id";
         if($usesId){
             fwrite($file, "            \$table->id();\n");
         }
 
-        $usesTimeStamps = true;
         if($usesTimeStamps){
             fwrite($file, "            \$table->timestamps();\n");
         }
@@ -103,13 +120,23 @@ class MigrationWriter
             }
 
             fwrite($file, "            \$table->" . $type . "('" . $field->name . "')");
-            if ($field->nullable) {
+            if (!$field->primary && $field->nullable) {
                 fwrite($file, "->nullable()");
             }
-            if ($field->unique) {
+            if (!$field->primary && $field->unique) {
                 fwrite($file, "->unique()");
             }
             fwrite($file, ";\n");
+        }
+
+        if(sizeof($classKeys) > 1){
+            fwrite($file, "            \$table->primary([");
+            foreach($classKeys as $pk){
+                fwrite($file, "'" . $pk . "', ");
+            }
+            fwrite($file, "]);\n");
+        } else if(sizeof($classKeys) == 1 && !$usesId){
+            fwrite($file, "            \$table->primary('" . $classKeys[0] . "');\n");
         }
 
         fwrite($file, "        });\n");
@@ -137,7 +164,7 @@ class MigrationWriter
      * @param string $path
      * @return void
      */
-    public static function write($class, $command, $path = "database/migrations")
+    public static function writeCreateMigrations($class, $command, $path = "database/migrations")
     {
         // Remove trailing slash
         if($path[-1] == "/"){
