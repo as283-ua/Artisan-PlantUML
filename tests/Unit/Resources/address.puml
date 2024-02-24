@@ -1,0 +1,9 @@
+@startuml
+class Address{
+  cp: string
+  localidad: string
+  provincia: string
+  calle: string
+  numero: int
+}
+@enduml

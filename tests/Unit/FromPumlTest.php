@@ -5,9 +5,19 @@ use Orchestra\Testbench\TestCase;
 
 class FromPumlTest extends TestCase
 {
+    const OUT_DIR = "tests/Unit/Resources/out";
+    
     protected function getPackageProviders($app)
     {
         return ['As283\ArtisanPlantuml\PUMLServiceProvider'];
+    }
+
+    private function cleanOutFiles(){
+        $files = glob(self::OUT_DIR . "/*");
+        foreach($files as $file){
+            if(is_file($file))
+                unlink($file);
+        }
     }
 
     public function testCallCommand()
@@ -23,5 +33,17 @@ class FromPumlTest extends TestCase
         artisan("make:from-puml")->
         expectsQuestion("What is the filename of the PlantUML class diagram?", "nonexistentfile.puml")->
         assertExitCode(1);
+    }
+
+    public function testCreatesMigrationFile()
+    {
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/address.puml --path=" . self::OUT_DIR)->
+        assertExitCode(0);
+        
+        $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
+        $this->cleanOutFiles();
+
+        $this->assertNotNull($migration);
     }
 }

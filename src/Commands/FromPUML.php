@@ -3,6 +3,7 @@
 namespace As283\ArtisanPlantuml\Commands;
 
 use As283\ArtisanPlantuml\Core\MigrationWriter;
+use As283\PlantUmlProcessor\Exceptions\FieldException;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
@@ -16,7 +17,9 @@ class FromPUML extends Command implements PromptsForMissingInput
      */
     protected $signature = 
     'make:from-puml
-    {file : The filename of the PlantUML class diagram.}';
+    {file : The filename of the PlantUML class diagram.}
+    {--force}
+    {--path=database/migrations}';
 
     
     /**
@@ -50,17 +53,22 @@ class FromPUML extends Command implements PromptsForMissingInput
         $puml = fread($pumlFile,filesize($this->argument('file')));
         fclose($pumlFile);
 
-        $schema = PlantUmlProcessor::parse($puml);
+        try{
+            $schema = PlantUmlProcessor::parse($puml);
+        } catch (FieldException $e){
+            $this->error("Parsing error. " . $e->getMessage());
+            return 1;
+        }
 
         if($schema == null){
-            $this->error("Parsing error. Invalid PlantUML file.");
+            $this->error("Parsing error. Invalid PlantUML file. You can what the problem is using the online PlantUML web server: https://www.plantuml.com/plantuml/uml");
             return 1;
         }
 
         $this->info("Generating models and migrations:");
         
         foreach ($schema->classes as $class) {
-            MigrationWriter::write($class);
+            MigrationWriter::write($class, $this, $this->option('path'));
         }
 
         $this->info($puml);

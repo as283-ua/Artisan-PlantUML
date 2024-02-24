@@ -1,0 +1,63 @@
+@startuml
+class Direccion{
+  cp: string
+  localidad: string
+  provincia: string
+  calle: string
+  numero: int
+}
+
+class Usuario{
+  id: int
+  email: string
+  password: string
+  nombre: string
+  apikey: string
+}
+
+class Rol {
+  id: int
+  nombre: string
+}
+
+class Envio{
+  id: int
+  codigo: string
+  peso: float
+  precio: float
+  observaciones: string
+}
+
+class Tarifa{
+  id: int
+  nombre: string
+  coste: float
+}
+
+class Historico{
+  fecha: timeStamp
+  observaciones: string
+}
+
+class Estado{
+  id: int
+  nombre: string
+}
+
+
+Direccion "1" -- "*" Envio: origen
+Direccion "1" -- "*" Envio: destino
+
+Direccion "0, 1" -- "0, 1" Usuario
+
+Envio "*" -- "1" Usuario: repartidor
+
+Usuario "*" -- "1" Rol
+
+Envio "*" -- "*" Tarifa
+
+Envio "1" -- "*" Historico
+
+Historico "*" -- "1" Estado
+
+@enduml
