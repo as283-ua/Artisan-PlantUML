@@ -13,36 +13,26 @@ class ModelWriter
      */
     private static function fileName($className)
     {
-        
-        return "";
+        return ucfirst(strtolower($className)) . ".php";
     }
 
-    /**
-     * Generate the up method for the migration
-     * @param ClassMetadata $class
-     * @return string
-     */
-    private static function writeUp($class)
-    {
-        return "";
-    }
 
     /**
      * Write a migration file for the given class
      * @param ClassMetadata $class
      * @return void
      */
-    public static function write($class, $path = "database/migrations")
+    public static function write($class, $schema, $command)
     {
-        // Remove trailing slash
-        if($path[-1] == "/"){
-            $path = substr($path, 0, -1);
-        }
+        // $path = "app/Models";
 
-        $migrationFile = $path . "/" . self::fileName($class->name);
+        // // Remove trailing slash
+        // if($path[-1] == "/"){
+        //     $path = substr($path, 0, -1);
+        // }
 
-        $migration = fopen($migrationFile, "w");
+        // $migrationFile = $path . "/" . self::fileName($class->name);
 
-        return "Writing migration";
+        // $migration = fopen($migrationFile, "w");
     }
 }

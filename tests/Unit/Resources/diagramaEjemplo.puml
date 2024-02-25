@@ -2,22 +2,20 @@
 class Direccion{
   cp: string
   localidad: string
-  provincia: string
-  calle: string
+  > provincia: string
+  > calle: string
   numero: int
 }
 
 class Usuario{
-  id: int
-  email: string
+  > email: string
   password: string
   nombre: string
   apikey: string
 }
 
 class Rol {
-  id: int
-  nombre: string
+  > nombre: string
 }
 
 class Envio{

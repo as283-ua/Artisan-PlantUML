@@ -3,6 +3,7 @@
 namespace As283\ArtisanPlantuml\Commands;
 
 use As283\ArtisanPlantuml\Core\MigrationWriter;
+use As283\ArtisanPlantuml\Core\ModelWriter;
 use As283\PlantUmlProcessor\Exceptions\FieldException;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
@@ -65,14 +66,11 @@ class FromPUML extends Command implements PromptsForMissingInput
             return 1;
         }
 
-        // usort($schema->classes, function($a, $b){
-        //     return $a->name <=> $b->name;
-        // });
-
         $this->info("Generating models and migrations:");
         
         foreach ($schema->classes as $class) {
-            MigrationWriter::writeCreateMigrations($class, $this, $this->option('path'));
+            MigrationWriter::writeCreateMigrations($class, $schema, $this);
+            ModelWriter::write($class, $schema, $this);
         }
 
         $this->info($puml);
