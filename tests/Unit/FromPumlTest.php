@@ -66,7 +66,7 @@ class FromPumlTest extends TestCase
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
-        $this->cleanOutFiles();
+        // $this->cleanOutFiles();
 
         $this->assertEquals(7, $migrationCount);
     }

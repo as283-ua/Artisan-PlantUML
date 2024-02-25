@@ -175,31 +175,31 @@ class MigrationWriter
         }
 
         // // Write foreign keys
-        // foreach ($class->relationIndexes as $index => $relatedClassName) {
-        //     $relation = $schema->relations[$index];
+        foreach ($class->relationIndexes as $index => $relatedClassName) {
+            $relation = $schema->relations[$index];
 
-        //     $cardinality = self::getCardinality($class->name, $relation);
+            $cardinality = self::getCardinality($class->name, $relation);
 
-        //     // Cardinality of many goes in another table, skip here
-        //     if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
-        //         continue;
-        //     }
+            // Cardinality of many goes in another table, skip here
+            if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
+                continue;
+            }
 
-        //     $otherClass = $schema->classes[$relatedClassName];
-        //     $otherClassPKs = self::classKeys($otherClass);
-        //     $otherUsesId = isset($otherClassPKs["id"]);
+            $otherClass = $schema->classes[$relatedClassName];
+            $otherClassPKs = self::classKeys($otherClass);
+            $otherUsesId = isset($otherClassPKs["id"]);
 
-        //     if($otherUsesId){
-        //         fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained()");
-        //     } else {
-        //         foreach ($otherClassPKs as $key => $type) {
-        //             fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
-        //             fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "->references('" . $key . "')->on('" . strtolower($relatedClassName) . "')");
-        //         }
-        //     }
+            if($otherUsesId){
+                fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained();\n");
+            } else {
+                foreach ($otherClassPKs as $key => $type) {
+                    fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
+                    fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                }
+            }
 
-        //     //no support for many to many
-        // }
+            //no support for many to many
+        }
 
         fwrite($file, "        });\n");
         fwrite($file, "    }\n\n");
