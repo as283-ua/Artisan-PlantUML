@@ -219,6 +219,7 @@ class MigrationWriter
         fwrite($file, "};");
     }
 
+
     /**
      * Write a migration file for the given class
      * @param ClassMetadata $class
@@ -226,7 +227,18 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function writeCreateMigrations($class, $schema, $command)
+    public static function write($class, $schema, $command){
+        self::writeCreateMigrations($class, $schema, $command);
+    }
+
+    /**
+     * Write a migration file for the given class
+     * @param ClassMetadata $class
+     * @param Schema $schema
+     * @param Command $command. For outputting messages to the console and getting command line parameters and options
+     * @return void
+     */
+    private static function writeCreateMigrations($class, $schema, $command)
     {
         $path = $command->option("path");
 
