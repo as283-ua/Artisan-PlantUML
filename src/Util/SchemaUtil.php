@@ -13,11 +13,12 @@ class SchemaUtil{
     private static function initClassMap(&$schema){
         $classMap = [];
         foreach($schema->classes as $class){
+
             $classMap[$class->name] = [
                 "resolved" => false,
                 "relations" => []
             ];
-
+            
             foreach ($class->relationIndexes as $index => $otherClassName) {
                 $relation = $schema->relations[$index];
                 /**
@@ -29,15 +30,20 @@ class SchemaUtil{
                 } else if($relation->to[0] === $class->name){
                     $cardinality = $relation->to[1];
                 }
-
+                
                 $classMap[$class->name]["relations"][] = [
                     "class" => $otherClassName,
-                    "cardinality" => $schema->relations[$index]->from,
+                    "cardinality" => $cardinality->toString(),
                     "resolved" => false
                 ];
             }
-            return $classMap;
         }
+        
+        return $classMap;
+    }
+
+    private static function printClassMap(&$classMap){
+        echo json_encode($classMap, JSON_PRETTY_PRINT) . "\n";
     }
 
 
@@ -66,21 +72,45 @@ class SchemaUtil{
 
             // will run through all classes and do && of $resolved with $class->resolved
             $resolvedAll = true;
-            foreach ($classMap as $classname => $state) {
-                
+            foreach ($classMap as $classname => &$state) {
+
                 // check if class is resolved or resolvable
                 $resolvable = true;
-                foreach($state["relations"] as $relation){
+                foreach($state["relations"] as &$relation){
                     if($relation["resolved"]){
                         continue;
                     }
 
-                    if($relation["cardinality"] === Cardinality::Any || $relation["cardinality"] === Cardinality::AtLeastOne){
+                    $cardinality = Cardinality::fromString($relation["cardinality"]);
+                    if($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne){
                         $relation["resolved"] = true;
                         continue;
                     }
 
                     if($relation["class"] === $classname){
+                        $relation["resolved"] = true;
+                        continue;
+                    }
+
+                    // find out if other class also has 0..1 or 1 cardinality
+                    $indexes = $schema->classes[$classname]->relationIndexes;
+                    $index = -1;
+                    foreach ($indexes as $i => $otherClass) {
+                        if($otherClass === $relation["class"]){
+                            $index = $i;
+                            break;
+                        }
+                    }
+
+                    $relationData = $schema->relations[$index];
+                    $otherCardinality = null;
+                    if($relationData->from[0] === $relation["class"]){
+                        $otherCardinality = $relationData->from[1];
+                    } else if($relationData->to[0] === $relation["class"]){
+                        $otherCardinality = $relationData->to[1];
+                    }
+
+                    if($otherCardinality === Cardinality::One || $otherCardinality === Cardinality::ZeroOrOne){
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -93,6 +123,7 @@ class SchemaUtil{
 
                     $resolvable = false;
                 }
+
                 $state["resolved"] = $resolvable;
                 if($resolvable){
                     $orderedClasses[] = $classname;
@@ -104,7 +135,7 @@ class SchemaUtil{
             // clean up $classMap by removing ordered ones
             foreach ($orderedClasses as $class) {
                 if(array_key_exists($class, $classMap)){
-                    unset($class, $classMap);
+                    unset($classMap[$class]);
                 }
             }
 

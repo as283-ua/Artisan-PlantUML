@@ -186,6 +186,11 @@ class MigrationWriter
                 continue;
             }
 
+            $otherCardinality = self::getCardinality($relatedClassName, $relation);
+            if($otherCardinality == Cardinality::One || $otherCardinality == Cardinality::ZeroOrOne){
+                continue;
+            }
+
             $otherClass = $schema->classes[$relatedClassName];
             $otherClassPKs = self::classKeys($otherClass);
             $otherUsesId = isset($otherClassPKs["id"]);

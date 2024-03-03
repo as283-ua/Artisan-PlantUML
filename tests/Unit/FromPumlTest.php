@@ -37,36 +37,39 @@ class FromPumlTest extends TestCase
 
     public function testCreatesMigrationFile()
     {
+        $this->cleanOutFiles();
+        
         $this->
         artisan("make:from-puml tests/Unit/Resources/address.puml --path=" . self::OUT_DIR)->
         assertExitCode(0);
         
         $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
-        $this->cleanOutFiles();
 
         $this->assertNotNull($migration);
     }
 
     public function testMigrationWithConstraints()
     {
+        $this->cleanOutFiles();
+
         $this->
         artisan("make:from-puml tests/Unit/Resources/address2.puml --path=" . self::OUT_DIR)->
         assertExitCode(0);
         
         $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
-        $this->cleanOutFiles();
 
         $this->assertNotNull($migration);
     }
 
     public function testMigrationBig()
     {
+        $this->cleanOutFiles();
+
         $this->
         artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --path=" . self::OUT_DIR)->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
-        // $this->cleanOutFiles();
 
         $this->assertEquals(7, $migrationCount);
     }

@@ -71,7 +71,7 @@ class FromPUML extends Command implements PromptsForMissingInput
         $classNamesOrdered = SchemaUtil::orderClasses($schema);
         
         $i = 1;
-        foreach ($$classNamesOrdered as $className) {
+        foreach ($classNamesOrdered as $className) {
             MigrationWriter::write($schema->classes[$className], $schema, $i, $this);
             ModelWriter::write($schema->classes[$className], $schema, $i, $this);
             $i++;
