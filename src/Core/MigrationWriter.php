@@ -16,12 +16,13 @@ class MigrationWriter
     /**
      * Generate a file name for the migration
      * @param string $className
+     * @param int $index
      * @return string
      */
-    private static function fileName($className)
+    private static function fileName($className, $index)
     {
         $table = Pluralizer::plural(strtolower($className));
-        return date("Y_m_d_His") . "_create_" . $table . "_table.php";
+        return date("Y_m_d_His") . "_" . $index . "_create_" . $table . "_table.php";
     }
 
     /**
@@ -224,22 +225,11 @@ class MigrationWriter
      * Write a migration file for the given class
      * @param ClassMetadata $class
      * @param Schema $schema
+     * @param int $index
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function write($class, $schema, $command){
-        self::writeCreateMigrations($class, $schema, $command);
-    }
-
-    /**
-     * Write a migration file for the given class
-     * @param ClassMetadata $class
-     * @param Schema $schema
-     * @param Command $command. For outputting messages to the console and getting command line parameters and options
-     * @return void
-     */
-    private static function writeCreateMigrations($class, $schema, $command)
-    {
+    public static function write($class, $schema, $index, $command){
         $path = $command->option("path");
 
         // Remove trailing slash
@@ -247,7 +237,7 @@ class MigrationWriter
             $path = substr($path, 0, -1);
         }
 
-        $migrationFile = $path . "/" . self::fileName($class->name);
+        $migrationFile = $path . "/" . self::fileName($class->name, $index);
 
         $migration = fopen($migrationFile, "w");
 

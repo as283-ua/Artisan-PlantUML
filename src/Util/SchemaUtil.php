@@ -1,6 +1,7 @@
 <?php
 namespace As283\ArtisanPlantuml\Util;
 
+use As283\ArtisanPlantuml\Exceptions\CycleException;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Cardinality;
 
@@ -54,7 +55,15 @@ class SchemaUtil{
 
         $resolvedAll = false;
 
+        $unorderedCount = count($classMap);
+        $oldUnorderedCount = -1;
+
         while(!$resolvedAll){
+            // failsafe
+            if($oldUnorderedCount === $unorderedCount){
+                throw new CycleException(array_keys($classMap));
+            }
+
             // will run through all classes and do && of $resolved with $class->resolved
             $resolvedAll = true;
             foreach ($classMap as $classname => $state) {
@@ -98,6 +107,9 @@ class SchemaUtil{
                     unset($class, $classMap);
                 }
             }
+
+            $oldUnorderedCount = $unorderedCount;
+            $unorderedCount = count($classMap);
         }
 
         return $orderedClasses;
