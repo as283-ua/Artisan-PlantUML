@@ -63,7 +63,7 @@ class FromPUML extends Command implements PromptsForMissingInput
         }
 
         if($schema == null){
-            $this->error("Parsing error. Invalid PlantUML file. You can what the problem is using the online PlantUML web server: https://www.plantuml.com/plantuml/uml");
+            $this->error("Parsing error. Invalid PlantUML file. You can check what the problem is using the online PlantUML web server: https://www.plantuml.com/plantuml/uml");
             return 1;
         }
 

@@ -9,48 +9,41 @@ use As283\PlantUmlProcessor\Model\Field;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Type;
 use As283\PlantUmlProcessor\Model\Cardinality;
-use As283\PlantUmlProcessor\Model\Relation;
 use Illuminate\Console\Command;
 
 class MigrationWriter
 {
     /**
      * Generate a file name for the migration
-     * @param string $className
-     * @param int $index
+     * @param string|array $className
+     * @param int|null $index
      * @return string
      */
-    private static function fileName($className, $index)
+    private static function fileName($className, $index = null)
     {
-        $table = Pluralizer::plural(strtolower($className));
-        return date("Y_m_d_His") . "_" . $index . "_create_" . $table . "_table.php";
+        $table = "";
+        if(is_array($className)){
+            $table = self::junctionTableName($className);
+        } else {
+            $table = Pluralizer::plural(strtolower($className));
+        }
+
+        $indexStr = $index === null ? "" : "_" . $index;
+        return date("Y_m_d_His") . $indexStr . "_create_" . $table . "_table.php";
     }
 
     /**
-     * Convert a field type to a Laravel migration type
-     * @param Field $fieldType
-     * @return string|null
+     * Generate a junction table name for the migration
+     * @param array $classes
+     * @return string
      */
-    private static function fieldTypeToLaravelType($fieldType)
-    {
-        switch ($fieldType) {
-            case Type::string:
-                return "string";
-            case Type::int:
-                return "integer";
-            case Type::float:
-                return "float";
-            case Type::double:
-                return "double";
-            case Type::bool:
-                return "boolean";
-            case Type::Date:
-                return "date";
-            case Type::DateTime:
-                return "dateTime";
-            default:
-                return null;
+    private static function junctionTableName($classes){
+        sort($classes);
+        foreach ($classes as &$name) {
+            $name = strtolower($name);
         }
+
+        return implode("_", $classes);
     }
 
 
@@ -71,30 +64,13 @@ class MigrationWriter
         fwrite($file, "    {\n");
     }
 
-
     /**
-     * Generate the up method for the migration
+     * Write the fields for the migration
      * @param resource $file
      * @param ClassMetadata $class
-     * @param Schema &$schema
      * @param Command &$command
-     * @param bool $usesTimeStamps
-     * @return void
      */
-    private static function writeUp($file, $class, &$schema, &$command, $usesTimeStamps = true)
-    {
-        fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
-        
-        $classPKs = SchemaUtil::classKeys($class);
-        $usesId = isset($classPKs["id"]);
-        if($usesId){
-            fwrite($file, "            \$table->id();\n");
-        }
-
-        if($usesTimeStamps){
-            fwrite($file, "            \$table->timestamps();\n");
-        }
-        
+    private static function writeFields($file, &$class, &$command){
         foreach ($class->fields as $field) {
             if($field->name == "id"){
                 continue;
@@ -105,7 +81,7 @@ class MigrationWriter
                 continue;
             }
 
-            $type = self::fieldTypeToLaravelType($field->type);
+            $type = SchemaUtil::fieldTypeToLaravelType($field->type);
             if($type == null){
                 $command->error("Field " . $field->name . " has an unsupported type. Skipping.");
                 continue;
@@ -120,8 +96,15 @@ class MigrationWriter
             }
             fwrite($file, ";\n");
         }
+    }
 
-        // Write primary keys
+    /**
+     * Write the primary keys for the migration
+     * @param resource $file
+     * @param array<string,Type> $classPKs
+     * @param bool $usesId
+     */
+    private static function writePKs($file, $classPKs, $usesId){
         if(count($classPKs) > 1){
             fwrite($file, "            \$table->primary([");
             foreach($classPKs as $pk => $ignore){
@@ -133,8 +116,15 @@ class MigrationWriter
             
             fwrite($file, "            \$table->primary('" . $classKeys[0] . "');\n");
         }
+    }
 
-        // Write foreign keys
+    /**
+     * Write the foreign keys for the migration
+     * @param resource $file
+     * @param ClassMetadata &$class
+     * @param Schema &$schema
+     */
+    private static function writeFKs($file, &$class, &$schema){
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
             $tableName = Pluralizer::plural(strtolower($relatedClassName));
             if(count($indexes) == 1){
@@ -160,7 +150,7 @@ class MigrationWriter
                     fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained();\n");
                 } else {
                     foreach ($otherClassPKs as $key => $type) {
-                        fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
+                        fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
                         fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . $tableName . "');\n");
                     }
                 }
@@ -192,7 +182,7 @@ class MigrationWriter
                         $fks = [];
                         foreach ($otherClassPKs as $key => $type) {
                             $columnName = strtolower($relatedClassName) . "_" . $key . $j;
-                            fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
+                            fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
                             $fks[] = $columnName;
                         }
                         fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
@@ -201,6 +191,37 @@ class MigrationWriter
                 }
             }
         }
+    }
+
+
+    /**
+     * Generate the up method for the migration
+     * @param resource $file
+     * @param ClassMetadata $class
+     * @param Schema &$schema
+     * @param Command &$command
+     * @param bool $usesTimeStamps
+     * @return void
+     */
+    private static function writeUp($file, $class, &$schema, &$command, $usesTimeStamps = true)
+    {
+        fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
+        
+        $classPKs = SchemaUtil::classKeys($class);
+        $usesId = isset($classPKs["id"]);
+        if($usesId){
+            fwrite($file, "            \$table->id();\n");
+        }
+
+        if($usesTimeStamps){
+            fwrite($file, "            \$table->timestamps();\n");
+        }
+        
+        self::writeFields($file, $class, $command);
+
+        self::writePKs($file, $classPKs, $usesId);
+
+        self::writeFKs($file, $class, $schema);
 
         fwrite($file, "        });\n");
         fwrite($file, "    }\n\n");
@@ -208,16 +229,35 @@ class MigrationWriter
 
     /**
      * Generate the down method for the migration
-     * @param ClassMetadata $class
+     * @param string $tableName
      * @param resource $file
      * @return void
      */
-    private static function writeDown($file, $class){
+    private static function writeDown($file, $tableName){
         fwrite($file, "    public function down(): void\n");
         fwrite($file, "    {\n");
-        fwrite($file, "        Schema::dropIfExists('" . Pluralizer::plural(strtolower($class->name)) . "');\n");
+        fwrite($file, "        Schema::dropIfExists('" . $tableName . "');\n");
         fwrite($file, "    }\n");
         fwrite($file, "};");
+    }
+
+    /**
+     * @param resource $file
+     * @param ClassMetadata $class1
+     * @param ClassMetadata $class2
+     * @param Schema &$schema
+     * @param Command &$command 
+     */
+    private static function writeJunctionUp($file, $class1, $class2, &$schema, $relationIndex, &$command){
+        fwrite($file, "        Schema::create('" . self::junctionTableName([$class1->name, $class2->name]) . "', function (Blueprint \$table) {\n");
+        
+        $class1PKs = SchemaUtil::classKeys($class1);
+        $class2PKs = SchemaUtil::classKeys($class2);
+        
+        $relation = $schema->relations[$relationIndex];
+        $isManyToMany = $relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne;
+
+        fwrite($file, "            \$table->id();\n");
     }
 
 
@@ -243,11 +283,10 @@ class MigrationWriter
 
         self::writeUseStatements($migration);
         self::writeUp($migration, $class, $schema, $command);
-        self::writeDown($migration, $class);
+        self::writeDown($migration, Pluralizer::plural(strtolower($class->name)));
 
         fclose($migration);
     }
-
     /**
      * Write a migration file for the given class
      * @param string $class1
@@ -257,7 +296,22 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function writeJunctionTable($class1, $class2, &$schema, $index, $command){
+    public static function writeJunctionTable($class1, $class2, &$schema, $command){
         // https://chat.openai.com/c/7f00fcad-0e08-4b5c-940b-e38ce8845ca8
+        $path = $command->option("path");// Remove trailing slash
+
+        if($path[-1] == "/"){
+            $path = substr($path, 0, -1);
+        }
+
+        $migrationFile = $path . "/" . self::fileName([$class1, $class2]);
+
+        $migration = fopen($migrationFile, "w");
+
+        self::writeUseStatements($migration);
+        self::writeJunctionUp($migration, $class1, $class2, $schema, 0, $command);
+        self::writeDown($migration, self::junctionTableName([$class1, $class2]));
+
+        fclose($migration);
     }
 }

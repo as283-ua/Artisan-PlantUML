@@ -195,4 +195,33 @@ class SchemaUtil{
             $keys = ["id" => Type::int];
         return $keys;
     }
+
+
+
+    /**
+     * Convert a field type to a Laravel migration type
+     * @param Field $fieldType
+     * @return string|null
+     */
+    public static function fieldTypeToLaravelType($fieldType)
+    {
+        switch ($fieldType) {
+            case Type::string:
+                return "string";
+            case Type::int:
+                return "integer";
+            case Type::float:
+                return "float";
+            case Type::double:
+                return "double";
+            case Type::bool:
+                return "boolean";
+            case Type::Date:
+                return "date";
+            case Type::DateTime:
+                return "dateTime";
+            default:
+                return null;
+        }
+    }
 }
