@@ -189,10 +189,13 @@ class MigrationWriter
                     if($otherUsesId){
                         fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')->references('id')->on('" . strtolower($relatedClassName) . "');\n");
                     } else {
+                        $fks = [];
                         foreach ($otherClassPKs as $key => $type) {
-                            fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . $j . "');\n");
-                            fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . $j . "')->references('" . $key . "')->on('" . $tableName . "');\n");
+                            $columnName = strtolower($relatedClassName) . "_" . $key . $j;
+                            fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
+                            $fks[] = $columnName;
                         }
+                        fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
                     }
                     $j++;
                 }
