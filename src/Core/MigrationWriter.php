@@ -2,6 +2,7 @@
 
 namespace As283\ArtisanPlantuml\Core;
 
+use As283\ArtisanPlantuml\Util\SchemaUtil;
 use Illuminate\Support\Pluralizer;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Field;
@@ -54,48 +55,6 @@ class MigrationWriter
 
 
     /**
-     * Obtain list of fields that are part of the primary key with their data type. If one of the fields is "id", it is assumed to be the primary key and no further fields are considered. If no field is marked as primary, "id" is assumed to be the primary key. This function always return an array of at least one element.
-     * @param ClassMetadata $class
-     * @return array<string,Type> List of fields that are part of the primary key . ["id"] if no primary key is defined
-     */
-    private static function classKeys($class){
-        $keys = [];
-        foreach($class->fields as $field){
-            if($field->name === "id"){
-                $field->primary = true;
-                // might ignore type and just use id()
-                return [$field->name => $field->type];
-            } else if($field->primary){
-                $keys[$field->name] = $field->type;
-            }
-        }
-
-        if(sizeof($keys) == 0)
-            $keys = ["id" => Type::int];
-        return $keys;
-    }
-
-    /**
-     * Get the cardinality of a relation
-     * @param string $className
-     * @param Relation $relation
-     * @return Cardinality|null
-     */
-    private static function getCardinality($className, $relation){
-        if($relation->from[0] === $className){
-            return $relation->from[1];
-        } else if($relation->to[0] === $className){
-            return $relation->to[1];
-        }
-
-        // this should only happen if it's called incorrectly
-        // we call it in a foreach so it should never happen
-        return null;
-    }
-    
-
-
-    /**
      * Write the use statements for the migration
      * @param resource $file
      * @return void
@@ -126,7 +85,7 @@ class MigrationWriter
     {
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
         
-        $classPKs = self::classKeys($class);
+        $classPKs = SchemaUtil::classKeys($class);
         $usesId = isset($classPKs["id"]);
         if($usesId){
             fwrite($file, "            \$table->id();\n");
@@ -175,32 +134,66 @@ class MigrationWriter
             fwrite($file, "            \$table->primary('" . $classKeys[0] . "');\n");
         }
 
-        // // Write foreign keys
-        foreach ($class->relationIndexes as $index => $relatedClassName) {
-            $relation = $schema->relations[$index];
-
-            $cardinality = self::getCardinality($class->name, $relation);
-
-            // Cardinality of many goes in another table, skip here
-            if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
-                continue;
-            }
-
-            $otherCardinality = self::getCardinality($relatedClassName, $relation);
-            if($otherCardinality == Cardinality::One || $otherCardinality == Cardinality::ZeroOrOne){
-                continue;
-            }
-
-            $otherClass = $schema->classes[$relatedClassName];
-            $otherClassPKs = self::classKeys($otherClass);
-            $otherUsesId = isset($otherClassPKs["id"]);
-
-            if($otherUsesId){
-                fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained();\n");
+        // Write foreign keys
+        foreach ($class->relatedClasses as $relatedClassName => $indexes) {
+            if(count($indexes) == 1){
+                $relation = $schema->relations[$indexes[0]];
+    
+                $cardinality = SchemaUtil::getCardinality($class->name, $relation);
+    
+                // Cardinality of many goes in another table, skip here
+                if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
+                    continue;
+                }
+    
+                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+                if($otherCardinality == Cardinality::One || $otherCardinality == Cardinality::ZeroOrOne){
+                    continue;
+                }
+    
+                $otherClass = $schema->classes[$relatedClassName];
+                $otherClassPKs = SchemaUtil::classKeys($otherClass);
+                $otherUsesId = isset($otherClassPKs["id"]);
+    
+                if($otherUsesId){
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained();\n");
+                } else {
+                    foreach ($otherClassPKs as $key => $type) {
+                        fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
+                        fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                    }
+                }
             } else {
-                foreach ($otherClassPKs as $key => $type) {
-                    fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
-                    fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                // may cause problems in the future for generating the model
+                $j = 1;
+                foreach($indexes as $index){
+                    $relation = $schema->relations[$index];
+    
+                    $cardinality = SchemaUtil::getCardinality($class->name, $relation);
+    
+                    // Cardinality of many goes in another table, skip here
+                    if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
+                        continue;
+                    }
+    
+                    $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+                    if($otherCardinality == Cardinality::One || $otherCardinality == Cardinality::ZeroOrOne){
+                        continue;
+                    }
+    
+                    $otherClass = $schema->classes[$relatedClassName];
+                    $otherClassPKs = SchemaUtil::classKeys($otherClass);
+                    $otherUsesId = isset($otherClassPKs["id"]);
+    
+                    if($otherUsesId){
+                        fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')->references('id')->on('" . strtolower($relatedClassName) . "');\n");
+                    } else {
+                        foreach ($otherClassPKs as $key => $type) {
+                            fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . $j . "');\n");
+                            fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . $j . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                        }
+                    }
+                    $j++;
                 }
             }
         }

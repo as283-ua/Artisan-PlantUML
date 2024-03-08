@@ -4,7 +4,9 @@ namespace As283\ArtisanPlantuml\Util;
 use As283\ArtisanPlantuml\Exceptions\CycleException;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Relation;
+use As283\PlantUmlProcessor\Model\Type;
 
 class SchemaUtil{
     /**
@@ -12,6 +14,22 @@ class SchemaUtil{
      * @return mixed
      */
     private static function initClassMap(&$schema){
+        /*
+        [
+            "class1" => [
+                "resolved" => false,
+                "relations" => [
+                    [
+                        "resolved" => false,
+                        "class" => "class2",
+                        "index" => 0,
+                    ],
+                    ...
+                ]
+            ],
+            ...
+        ]
+        */
         $classMap = [];
         foreach($schema->classes as $class){
 
@@ -20,23 +38,14 @@ class SchemaUtil{
                 "relations" => []
             ];
             
-            foreach ($class->relationIndexes as $index => $otherClassName) {
-                $relation = $schema->relations[$index];
-                /**
-                 * @var Cardinality|null
-                 */
-                $cardinality = null;
-                if($relation->from[0] === $class->name){
-                    $cardinality = $relation->from[1];
-                } else if($relation->to[0] === $class->name){
-                    $cardinality = $relation->to[1];
+            foreach ($class->relatedClasses as $otherClassName => $relationIndexes) {
+                foreach ($relationIndexes as $index){
+                    $classMap[$class->name]["relations"][] = [
+                        "resolved" => false,
+                        "class" => $otherClassName,
+                        "index" => $index,
+                    ];
                 }
-                
-                $classMap[$class->name]["relations"][] = [
-                    "class" => $otherClassName,
-                    "cardinality" => $cardinality->toString(),
-                    "resolved" => false
-                ];
             }
         }
         
@@ -82,7 +91,9 @@ class SchemaUtil{
                         continue;
                     }
 
-                    $cardinality = Cardinality::fromString($relation["cardinality"]);
+                    $relationData = $schema->relations[$relation["index"]];
+
+                    $cardinality = self::getCardinality($classname, $relationData);
                     if($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne){
                         $relation["resolved"] = true;
                         continue;
@@ -94,17 +105,7 @@ class SchemaUtil{
                     }
 
                     // find out if other class also has 0..1 or 1 cardinality
-                    $indexes = $schema->classes[$classname]->relationIndexes;
-                    $index = -1;
-                    foreach ($indexes as $i => $otherClass) {
-                        if($otherClass === $relation["class"]){
-                            $index = $i;
-                            break;
-                        }
-                    }
-
-                    $relationData = $schema->relations[$index];
-                    $otherCardinality = null;
+                    $otherCardinality = self::getCardinality($relation["class"], $relationData);
                     if($relationData->from[0] === $relation["class"]){
                         $otherCardinality = $relationData->from[1];
                     } else if($relationData->to[0] === $relation["class"]){
@@ -156,5 +157,42 @@ class SchemaUtil{
     public static function sameRelationSources($relation1, $relation2){
         return ($relation1->from[0] === $relation2->from[0] && $relation1->to[0] === $relation2->to[0]) ||
                ($relation1->from[0] === $relation2->to[0] && $relation1->to[0] === $relation2->from[0]);
+    }
+
+    /**
+     * Get the cardinality of a relation
+     * @param string $className
+     * @param Relation $relation
+     * @return Cardinality|null
+     */
+    public static function getCardinality($class, $relation){
+        if($relation->from[0] === $class){
+            return $relation->from[1];
+        } else if($relation->to[0] === $class){
+            return $relation->to[1];
+        }
+        return null;
+    }
+
+    /**
+     * Obtain list of fields that are part of the primary key with their data type. If one of the fields is "id", it is assumed to be the primary key and no further fields are considered. If no field is marked as primary, "id" is assumed to be the primary key. This function always return an array of at least one element.
+     * @param ClassMetadata $class
+     * @return array<string,Type> List of fields that are part of the primary key . ["id"] if no primary key is defined
+     */
+    public static function classKeys($class){
+        $keys = [];
+        foreach($class->fields as $field){
+            if($field->name === "id"){
+                $field->primary = true;
+                // might ignore type and just use id()
+                return [$field->name => $field->type];
+            } else if($field->primary){
+                $keys[$field->name] = $field->type;
+            }
+        }
+
+        if(sizeof($keys) == 0)
+            $keys = ["id" => Type::int];
+        return $keys;
     }
 }
