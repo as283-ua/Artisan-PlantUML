@@ -6,6 +6,7 @@ use As283\ArtisanPlantuml\Core\MigrationWriter;
 use As283\ArtisanPlantuml\Core\ModelWriter;
 use As283\ArtisanPlantuml\Util\SchemaUtil;
 use As283\PlantUmlProcessor\Exceptions\FieldException;
+use As283\PlantUmlProcessor\Model\Cardinality;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
@@ -75,6 +76,15 @@ class FromPUML extends Command implements PromptsForMissingInput
             MigrationWriter::write($schema->classes[$className], $schema, $i, $this);
             ModelWriter::write($schema->classes[$className], $schema, $i, $this);
             $i++;
+        }
+
+        foreach ($schema->relations as $i => $relation) {
+            if(
+                ($relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne)
+                &&
+                ($relation->to[1] === Cardinality::Any || $relation->to[1] === Cardinality::AtLeastOne)){
+                    MigrationWriter::writeJunctionTable($relation->from[0], $relation->to[0], $schema, $i, $this);
+            }
         }
 
         $this->info($puml);

@@ -71,7 +71,7 @@ class FromPumlTest extends TestCase
         
         $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
 
-        $this->assertEquals(7, $migrationCount);
+        $this->assertEquals(8, $migrationCount);
     }
 
     public function testMigrationRepeatedFk()

@@ -19,9 +19,8 @@ class Rol {
 }
 
 class Envio{
-  id: int
-  codigo: string
-  peso: float
+  > codigo: string
+  > peso: float
   precio: float
   observaciones: string
 }
