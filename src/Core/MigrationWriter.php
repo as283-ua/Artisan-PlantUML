@@ -117,12 +117,12 @@ class MigrationWriter
      * Generate the up method for the migration
      * @param resource $file
      * @param ClassMetadata $class
-     * @param Schema $schema
-     * @param Command $command
+     * @param Schema &$schema
+     * @param Command &$command
      * @param bool $usesTimeStamps
      * @return void
      */
-    private static function writeUp($file, $class, $schema, $command, $usesTimeStamps = true)
+    private static function writeUp($file, $class, &$schema, &$command, $usesTimeStamps = true)
     {
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
         
@@ -203,8 +203,6 @@ class MigrationWriter
                     fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
                 }
             }
-
-            //no support for many to many
         }
 
         fwrite($file, "        });\n");
@@ -234,7 +232,7 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function write($class, $schema, $index, $command){
+    public static function write($class, &$schema, $index, $command){
         $path = $command->option("path");
 
         // Remove trailing slash
@@ -251,5 +249,18 @@ class MigrationWriter
         self::writeDown($migration, $class);
 
         fclose($migration);
+    }
+
+    /**
+     * Write a migration file for the given class
+     * @param string $class1
+     * @param string $class2
+     * @param Schema $schema
+     * @param int $index
+     * @param Command $command. For outputting messages to the console and getting command line parameters and options
+     * @return void
+     */
+    public static function writeJunctionTable($class1, $class2, &$schema, $index, $command){
+        // https://chat.openai.com/c/7f00fcad-0e08-4b5c-940b-e38ce8845ca8
     }
 }

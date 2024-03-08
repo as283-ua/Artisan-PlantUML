@@ -4,6 +4,7 @@ namespace As283\ArtisanPlantuml\Util;
 use As283\ArtisanPlantuml\Exceptions\CycleException;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Relation;
 
 class SchemaUtil{
     /**
@@ -144,5 +145,16 @@ class SchemaUtil{
         }
 
         return $orderedClasses;
+    }
+
+
+    /**
+     * @param Relation $relation1
+     * @param Relation $relation2
+     * @return bool
+     */
+    public static function sameRelationSources($relation1, $relation2){
+        return ($relation1->from[0] === $relation2->from[0] && $relation1->to[0] === $relation2->to[0]) ||
+               ($relation1->from[0] === $relation2->to[0] && $relation1->to[0] === $relation2->from[0]);
     }
 }

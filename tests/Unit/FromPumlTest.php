@@ -73,4 +73,17 @@ class FromPumlTest extends TestCase
 
         $this->assertEquals(7, $migrationCount);
     }
+
+    public function testMigrationRepeatedFk()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/doubleFk.puml --path=" . self::OUT_DIR)->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
+
+        $this->assertEquals(2, $migrationCount);
+    }
 }
