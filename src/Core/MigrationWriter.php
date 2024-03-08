@@ -136,6 +136,7 @@ class MigrationWriter
 
         // Write foreign keys
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
+            $tableName = Pluralizer::plural(strtolower($relatedClassName));
             if(count($indexes) == 1){
                 $relation = $schema->relations[$indexes[0]];
     
@@ -160,7 +161,7 @@ class MigrationWriter
                 } else {
                     foreach ($otherClassPKs as $key => $type) {
                         fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . "');\n");
-                        fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                        fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . "')->references('" . $key . "')->on('" . $tableName . "');\n");
                     }
                 }
             } else {
@@ -190,7 +191,7 @@ class MigrationWriter
                     } else {
                         foreach ($otherClassPKs as $key => $type) {
                             fwrite($file, "            \$table->" . self::fieldTypeToLaravelType($type) . "('" . strtolower($relatedClassName) . "_" . $key . $j . "');\n");
-                            fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . $j . "')->references('" . $key . "')->on('" . strtolower($relatedClassName) . "');\n");
+                            fwrite($file, "            \$table->foreign('" . strtolower($relatedClassName) . "_" . $key . $j . "')->references('" . $key . "')->on('" . $tableName . "');\n");
                         }
                     }
                     $j++;
