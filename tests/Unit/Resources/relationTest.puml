@@ -5,8 +5,8 @@ class A {
 }
 
 class B{
-  foo: string
-  bar: int
+  > foo: string
+  > bar: int
 }
 
 class C{
@@ -16,6 +16,7 @@ class C{
 
 A "*" -> "1" B
 A "0..1" -> "1" B
+A "0..1" -> "0..1" B
 B "1" -> "1" C
 C "1" -> "0..1" C
 C "0..1" -> "0..1" C

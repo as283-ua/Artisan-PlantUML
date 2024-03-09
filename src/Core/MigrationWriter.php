@@ -169,11 +169,13 @@ class MigrationWriter
                 $otherClassPKs = SchemaUtil::classKeys($otherClass);
                 $otherUsesId = isset($otherClassPKs["id"]);
 
-                $unique = $otherCardinality == Cardinality::One ? "->unique()" : "";
-                $nullable = $cardinality == Cardinality::ZeroOrOne ? "->nullable()" : "";
+                $unique = $otherCardinality == Cardinality::One;
+                $nullable = $cardinality == Cardinality::ZeroOrOne;
 
                 if($otherUsesId){
-                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')->constrained()" . $unique . $nullable .";\n");
+                    $unique = $unique ? "->unique()" : "";
+                    $nullable = $nullable ? "->nullable()" : "";
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')" . $unique . $nullable ."->constrained();\n");
                 } else {
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
@@ -181,7 +183,14 @@ class MigrationWriter
                         fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
                         $fks[] = $columnName;
                     }
-                    fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "')" . $unique . $nullable . ";\n");
+                    echo "Unique: " . $unique . "\n";
+                    echo "Nullable: " . $nullable . "\n";
+                    if($unique || $nullable){
+                        $unique = $unique ? "->unique(['" . implode("', '", $fks) . "'])" : "";
+                        $nullable = $nullable ? "->nullable(['" . implode("', '", $fks) . "'])" : "";
+                        fwrite($file, "            \$table" . $unique . $nullable . ";\n");
+                    }
+                    fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
                 }
 
                 if(!isset($j)){
