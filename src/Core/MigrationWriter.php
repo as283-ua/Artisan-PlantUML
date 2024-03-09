@@ -173,11 +173,11 @@ class MigrationWriter
                 $nullable = $cardinality == Cardinality::ZeroOrOne ? "->nullable()" : "";
 
                 if($otherUsesId){
-                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained()" . $unique . $nullable .";\n");
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')->constrained()" . $unique . $nullable .";\n");
                 } else {
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
-                        $columnName = strtolower($relatedClassName) . "_" . $key;
+                        $columnName = strtolower($relatedClassName) . "_" . $key . $j;
                         fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
                         $fks[] = $columnName;
                     }
