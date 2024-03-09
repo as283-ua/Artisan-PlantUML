@@ -133,27 +133,47 @@ class MigrationWriter
     private static function writeFKs($file, &$class, &$schema){
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
             $tableName = Pluralizer::plural(strtolower($relatedClassName));
+            $j = 1;
             if(count($indexes) == 1){
-                $relation = $schema->relations[$indexes[0]];
-    
+                $j = null;
+            }
+            foreach($indexes as $index){
+                $relation = $schema->relations[$index];
+
                 $cardinality = SchemaUtil::getCardinality($class->name, $relation);
-    
+
                 // Cardinality of many goes in another table, skip here
                 if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
                     continue;
                 }
-    
+
                 $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
-                if($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One){
-                    continue;
-                }
+
+                if($class->name !== $relatedClassName){
+                    // Fk goes in more restrictive table
+                    if($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One){
+                        continue;
+                    }
     
+                    // Fk goes in table who is alphabetically first
+                    if($cardinality === $otherCardinality && $relatedClassName < $class->name){
+                        continue;
+                    }
+                } else {
+                    if($otherCardinality == Cardinality::One){
+                        $cardinality = Cardinality::One;
+                    }
+                }
+
                 $otherClass = $schema->classes[$relatedClassName];
                 $otherClassPKs = SchemaUtil::classKeys($otherClass);
                 $otherUsesId = isset($otherClassPKs["id"]);
-    
+
+                $unique = $otherCardinality == Cardinality::One ? "->unique()" : "";
+                $nullable = $cardinality == Cardinality::ZeroOrOne ? "->nullable()" : "";
+
                 if($otherUsesId){
-                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained();\n");
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')->constrained()" . $unique . $nullable .";\n");
                 } else {
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
@@ -161,43 +181,19 @@ class MigrationWriter
                         fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
                         $fks[] = $columnName;
                     }
-                    fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
+                    fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "')" . $unique . $nullable . ";\n");
                 }
-            } else {
-                // may cause problems in the future for generating the model
-                $j = 1;
-                foreach($indexes as $index){
-                    $relation = $schema->relations[$index];
-    
-                    $cardinality = SchemaUtil::getCardinality($class->name, $relation);
-    
-                    // Cardinality of many goes in another table, skip here
-                    if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
-                        continue;
-                    }
-    
-                    $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
-                    if($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One){
-                        continue;
-                    }
-    
-                    $otherClass = $schema->classes[$relatedClassName];
-                    $otherClassPKs = SchemaUtil::classKeys($otherClass);
-                    $otherUsesId = isset($otherClassPKs["id"]);
-    
-                    if($otherUsesId){
-                        fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')->references('id')->on('" . strtolower($relatedClassName) . "');\n");
-                    } else {
-                        $fks = [];
-                        foreach ($otherClassPKs as $key => $type) {
-                            $columnName = strtolower($relatedClassName) . "_" . $key . $j;
-                            fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
-                            $fks[] = $columnName;
-                        }
-                        fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
-                    }
-                    $j++;
+
+                if(!isset($j)){
+                    break;
                 }
+                
+                // don't write the same fk twice
+                if($class->name === $relatedClassName){
+                    break;
+                }
+
+                $j++;
             }
         }
     }

@@ -60,6 +60,7 @@ class SchemaUtil{
     /**
      * @param Schema &$schema
      * @return array[string]
+     * @throws CycleException
      */
     public static function orderClasses(&$schema){
         $classMap = self::initClassMap($schema);
@@ -77,6 +78,7 @@ class SchemaUtil{
         while(!$resolvedAll){
             // failsafe
             if($oldUnorderedCount === $unorderedCount){
+                print_r($classMap);
                 throw new CycleException(array_keys($classMap));
             }
 
@@ -106,13 +108,13 @@ class SchemaUtil{
 
                     // find out if other class also has 0..1 or 1 cardinality
                     $otherCardinality = self::getCardinality($relation["class"], $relationData);
-                    if($relationData->from[0] === $relation["class"]){
-                        $otherCardinality = $relationData->from[1];
-                    } else if($relationData->to[0] === $relation["class"]){
-                        $otherCardinality = $relationData->to[1];
+                    
+                    if($cardinality === Cardinality::ZeroOrOne && $otherCardinality === Cardinality::One){
+                        $relation["resolved"] = true;
+                        continue;
                     }
 
-                    if($otherCardinality === Cardinality::One || $otherCardinality === Cardinality::ZeroOrOne){
+                    if($cardinality === $otherCardinality && $relation["class"] < $classname){
                         $relation["resolved"] = true;
                         continue;
                     }

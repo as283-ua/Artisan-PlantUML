@@ -4,6 +4,7 @@ namespace As283\ArtisanPlantuml\Commands;
 
 use As283\ArtisanPlantuml\Core\MigrationWriter;
 use As283\ArtisanPlantuml\Core\ModelWriter;
+use As283\ArtisanPlantuml\Exceptions\CycleException;
 use As283\ArtisanPlantuml\Util\SchemaUtil;
 use As283\PlantUmlProcessor\Exceptions\FieldException;
 use As283\PlantUmlProcessor\Model\Cardinality;
@@ -69,7 +70,12 @@ class FromPUML extends Command implements PromptsForMissingInput
         }
 
         $this->info("Generating models and migrations:");
-        $classNamesOrdered = SchemaUtil::orderClasses($schema);
+        try{
+            $classNamesOrdered = SchemaUtil::orderClasses($schema);
+        } catch (CycleException $e){
+            $this->error("Found cycle in class diagram. Extra migrations will be created for foreign keys.");
+            return 1;
+        }
         
         $i = 1;
         foreach ($classNamesOrdered as $className) {
@@ -86,7 +92,5 @@ class FromPUML extends Command implements PromptsForMissingInput
                     MigrationWriter::writeJunctionTable($relation->from[0], $relation->to[0], $schema, $i, $this);
             }
         }
-
-        $this->info($puml);
     }
 }
