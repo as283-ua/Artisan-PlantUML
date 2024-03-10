@@ -105,7 +105,7 @@ class ModelWriter
             $eloquentCardinality = self::getEloquentCardinality($cardinality, $otherCardinality, $className, $relatedClassName);
             $modelContainsFK = $eloquentCardinality === "belongsTo";
             $foreignKey = $modelContainsFK ? strtolower($relatedClassName) . "_" . $relatedKeys[0] : strtolower($className) . "_" . $keys[0];
-            $primaryKey = $modelContainsFK ? $keys[0] : $relatedKeys[0];
+            $primaryKey = $modelContainsFK ? $relatedKeys[0] : $keys[0];
 
             if($relatedKeys[0] != "id"){
                 fwrite($file, "    public function " . Pluralizer::plural(strtolower($relatedClass->name)) . "()\n");
