@@ -22,8 +22,9 @@ class FromPUML extends Command implements PromptsForMissingInput
     protected $signature = 
     'make:from-puml
     {file : The filename of the PlantUML class diagram.}
-    {--force}
-    {--path=database/migrations}';
+    {--path-migrations=database/migrations}
+    {--path-models=app/Models}
+    {--no-models}';
 
     
     /**
@@ -74,16 +75,20 @@ class FromPUML extends Command implements PromptsForMissingInput
             $classNamesOrdered = SchemaUtil::orderClasses($schema);
         } catch (CycleException $e){
             $this->error("Found cycle in class diagram. Extra migrations will be created for foreign keys.");
+            // for now exit code 1
             return 1;
         }
         
         $i = 1;
         foreach ($classNamesOrdered as $className) {
-            MigrationWriter::write($schema->classes[$className], $schema, $i, $this);
-            ModelWriter::write($schema->classes[$className], $schema, $i, $this);
+            MigrationWriter::write($className, $schema, $i, $this);
+            if(!$this->option('no-models')){
+                ModelWriter::write($className, $schema, $this);
+            }
             $i++;
         }
 
+        // Write junction tables
         foreach ($schema->relations as $i => $relation) {
             if(
                 ($relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne)

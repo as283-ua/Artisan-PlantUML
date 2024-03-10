@@ -183,8 +183,7 @@ class MigrationWriter
                         fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
                         $fks[] = $columnName;
                     }
-                    echo "Unique: " . $unique . "\n";
-                    echo "Nullable: " . $nullable . "\n";
+                    
                     if($unique || $nullable){
                         $unique = $unique ? "->unique(['" . implode("', '", $fks) . "'])" : "";
                         $nullable = $nullable ? "->nullable(['" . implode("', '", $fks) . "'])" : "";
@@ -300,20 +299,20 @@ class MigrationWriter
 
     /**
      * Write a migration file for the given class
-     * @param ClassMetadata $class
+     * @param string $class
      * @param Schema $schema
      * @param int $index
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function write($class, &$schema, $index, $command){
-        $path = $command->option("path");
+    public static function write($className, &$schema, $index, $command){
+        $path = $command->option("path-migrations");
 
         // Remove trailing slash
         if($path[-1] == "/"){
             $path = substr($path, 0, -1);
         }
-
+        $class = $schema->classes[$className];
         $migrationFile = $path . "/" . self::fileName($class->name, $index);
 
         $migration = fopen($migrationFile, "w");
@@ -335,7 +334,7 @@ class MigrationWriter
      */
     public static function writeJunctionTable($class1, $class2, &$schema, $relationIndex, $command){
         // https://chat.openai.com/c/7f00fcad-0e08-4b5c-940b-e38ce8845ca8
-        $path = $command->option("path");// Remove trailing slash
+        $path = $command->option("path-migrations");// Remove trailing slash
 
         if($path[-1] == "/"){
             $path = substr($path, 0, -1);

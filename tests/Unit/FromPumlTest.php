@@ -13,7 +13,12 @@ class FromPumlTest extends TestCase
     }
 
     private function cleanOutFiles(){
-        $files = glob(self::OUT_DIR . "/*");
+        $files = glob(self::OUT_DIR . "/migrations/*");
+        foreach($files as $file){
+            if(is_file($file))
+                unlink($file);
+        }
+        $files = glob(self::OUT_DIR . "/models/*");
         foreach($files as $file){
             if(is_file($file))
                 unlink($file);
@@ -40,10 +45,10 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
         
         $this->
-        artisan("make:from-puml tests/Unit/Resources/address.puml --path=" . self::OUT_DIR)->
+        artisan("make:from-puml tests/Unit/Resources/address.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
-        $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
+        $migration = glob(self::OUT_DIR . "/migrations" . "/*_create_addresses_table.php")[0];
 
         $this->assertNotNull($migration);
     }
@@ -53,10 +58,10 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/address2.puml --path=" . self::OUT_DIR)->
+        artisan("make:from-puml tests/Unit/Resources/address2.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
-        $migration = glob(self::OUT_DIR . "/*_create_addresses_table.php")[0];
+        $migration = glob(self::OUT_DIR . "/migrations" . "/*_create_addresses_table.php")[0];
 
         $this->assertNotNull($migration);
     }
@@ -66,10 +71,10 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --path=" . self::OUT_DIR)->
+        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
-        $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
 
         $this->assertEquals(8, $migrationCount);
     }
@@ -79,10 +84,10 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/doubleFk.puml --path=" . self::OUT_DIR)->
+        artisan("make:from-puml tests/Unit/Resources/doubleFk.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
-        $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
 
         $this->assertEquals(2, $migrationCount);
     }
@@ -92,11 +97,37 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/relationTest.puml --path=" . self::OUT_DIR)->
+        artisan("make:from-puml tests/Unit/Resources/relationTest.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
-        $migrationCount = count(glob(self::OUT_DIR . "/*_create_*.php"));
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
 
         $this->assertEquals(3, $migrationCount);
+    }
+
+    public function testModels()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/address.puml --path-migrations=" . self::OUT_DIR . "/migrations --path-models " . self::OUT_DIR . "/models")->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/models" . "/*"));
+
+        $this->assertEquals(1, $migrationCount);
+    }
+
+    public function testModelsBig()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --path-migrations=" . self::OUT_DIR . "/migrations --path-models " . self::OUT_DIR . "/models")->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/models" . "/*"));
+
+        $this->assertEquals(7, $migrationCount);
     }
 }

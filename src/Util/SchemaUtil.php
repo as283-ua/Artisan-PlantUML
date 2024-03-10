@@ -178,10 +178,10 @@ class SchemaUtil{
 
     /**
      * Obtain list of fields that are part of the primary key with their data type. If one of the fields is "id", it is assumed to be the primary key and no further fields are considered. If no field is marked as primary, "id" is assumed to be the primary key. This function always return an array of at least one element.
-     * @param ClassMetadata $class
+     * @param ClassMetadata &$class
      * @return array<string,Type> List of fields that are part of the primary key . ["id"] if no primary key is defined
      */
-    public static function classKeys($class){
+    public static function classKeys(&$class){
         $keys = [];
         foreach($class->fields as $field){
             if($field->name === "id"){
