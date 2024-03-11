@@ -87,46 +87,57 @@ class ModelWriter
     private static function writeBody($file, $className, &$schema, &$command)
     {
         $class = $schema->classes[$className];
-        $keys = array_keyS(SchemaUtil::classKeys($class));
+        $keysTypes = SchemaUtil::classKeys($class);
+        $keys = array_keyS($keysTypes);
 
         // Set primary key if not id
         if($keys[0] != "id"){
-            fwrite($file, "    protected \$primaryKey = '" . $keys[0] . "';\n\n");
+            fwrite($file, "    protected \$primaryKey = '" . $keys[0] . "';\n");
+            fwrite($file, "    protected \$keyType = '" . SchemaUtil::fieldTypeToLaravelType($keysTypes[$keys[0]]) . "';\n\n");
         }
 
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
-            $relation = $schema->relations[$indexes[0]];
-            $relatedClass = $schema->classes[$relatedClassName];
-            $relatedKeys = array_keys(SchemaUtil::classKeys($relatedClass));
+            $i = count($indexes) > 1 ? 1 : null;
 
-            $cardinality = SchemaUtil::getCardinality($className, $relation);
-            $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
-            
-            $eloquentCardinality = self::getEloquentCardinality($cardinality, $otherCardinality, $className, $relatedClassName);
-            
-            if($eloquentCardinality !== "belongsToMany"){
-                $modelContainsFK = $eloquentCardinality === "belongsTo";
-                $foreignKey = $modelContainsFK ? strtolower($relatedClassName) . "_" . $relatedKeys[0] : strtolower($className) . "_" . $keys[0];
-                $primaryKey = $modelContainsFK ? $relatedKeys[0] : $keys[0];
+            foreach($indexes as $index){
+                $relation = $schema->relations[$index];
+                $relatedClass = $schema->classes[$relatedClassName];
+                $relatedKeys = array_keys(SchemaUtil::classKeys($relatedClass));
     
-                if($relatedKeys[0] != "id"){
-                    fwrite($file, "    public function " . Pluralizer::plural(strtolower($relatedClass->name)) . "()\n");
-                    fwrite($file, "    {\n");
-                    fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class, '" . $foreignKey . "', '" . $primaryKey . "');\n");
-                    fwrite($file, "    }\n\n");
+                $cardinality = SchemaUtil::getCardinality($className, $relation);
+                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+                
+                $eloquentCardinality = self::getEloquentCardinality($cardinality, $otherCardinality, $className, $relatedClassName);
+                
+                if($eloquentCardinality !== "belongsToMany"){
+                    $modelContainsFK = $eloquentCardinality === "belongsTo";
+                    $foreignKey = $modelContainsFK ? strtolower($relatedClassName) . "_" . $relatedKeys[0] : strtolower($className) . "_" . $keys[0];
+                    $primaryKey = $modelContainsFK ? $relatedKeys[0] : $keys[0];
+                    $methodName = in_array($eloquentCardinality, ["hasMany", "belongsToMany"]) ? Pluralizer::plural(strtolower($relatedClass->name)) : strtolower($relatedClass->name);
+                    $methodName = $methodName . $i;
+                    if($relatedKeys[0] != "id" || count($indexes) > 1){
+                        fwrite($file, "    public function " . $methodName . "()\n");
+                        fwrite($file, "    {\n");
+                        fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class, '" . $foreignKey . $i . "', '" . $primaryKey . "');\n");
+                        fwrite($file, "    }\n\n");
+                    } else {
+                        fwrite($file, "    public function " . $methodName . "()\n");
+                        fwrite($file, "    {\n");
+                        fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class);\n");
+                        fwrite($file, "    }\n\n");
+                    }
                 } else {
+                    $fkSelf = strtolower($className) . "_" . $keys[0];
+                    $fkRelated = strtolower($relatedClassName) . "_" . $relatedKeys[0];
                     fwrite($file, "    public function " . Pluralizer::plural(strtolower($relatedClass->name)) . "()\n");
                     fwrite($file, "    {\n");
-                    fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class);\n");
+                    fwrite($file, "        return \$this->belongsToMany(" . self::modelName($relatedClass->name) . "::class, null, '" . $fkSelf . "', '" . $fkRelated . "');\n");
                     fwrite($file, "    }\n\n");
                 }
-            } else {
-                $fkSelf = strtolower($className) . "_" . $keys[0];
-                $fkRelated = strtolower($relatedClassName) . "_" . $relatedKeys[0];
-                fwrite($file, "    public function " . Pluralizer::plural(strtolower($relatedClass->name)) . "()\n");
-                fwrite($file, "    {\n");
-                fwrite($file, "        return \$this->belongsToMany(" . self::modelName($relatedClass->name) . "::class, null, '" . $fkSelf . "', '" . $fkRelated . "');\n");
-                fwrite($file, "    }\n\n");
+
+                if($i !== null){
+                    $i++;
+                }
             }
         }
 

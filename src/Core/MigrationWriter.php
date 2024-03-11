@@ -107,7 +107,6 @@ class MigrationWriter
     private static function writePKs($file, $classPKs){
         $usesId = isset($classPKs["id"]);
         if($usesId){
-            echo "Uses id\n";
             fwrite($file, "            \$table->id();\n");
             return;
         }
@@ -251,16 +250,16 @@ class MigrationWriter
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
         
         $classPKs = SchemaUtil::classKeys($class, $command->option("use-composite-keys"));
-
-        if($usesTimeStamps){
-            fwrite($file, "            \$table->timestamps();\n");
-        }
         
         self::writePKs($file, $classPKs);
 
         self::writeFields($file, $class, $command);
 
         self::writeFKs($file, $class, $schema, $command);
+
+        if($usesTimeStamps){
+            fwrite($file, "            \$table->timestamps();\n");
+        }
 
         fwrite($file, "        });\n");
         fwrite($file, "    }\n\n");
