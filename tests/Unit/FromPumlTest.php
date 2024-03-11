@@ -110,7 +110,7 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/address.puml --path-migrations=" . self::OUT_DIR . "/migrations --path-models " . self::OUT_DIR . "/models")->
+        artisan("make:from-puml tests/Unit/Resources/address.puml --no-migrations --path-models " . self::OUT_DIR . "/models")->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/models" . "/*"));
@@ -123,11 +123,24 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --path-migrations=" . self::OUT_DIR . "/migrations --path-models " . self::OUT_DIR . "/models")->
+        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --no-migrations --path-models " . self::OUT_DIR . "/models")->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/models" . "/*"));
 
         $this->assertEquals(7, $migrationCount);
+    }
+
+    public function testModelsManyToMany()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/manyToMany.puml --no-migrations --path-models " . self::OUT_DIR . "/models")->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/models" . "/*"));
+
+        $this->assertEquals(2, $migrationCount);
     }
 }

@@ -24,7 +24,8 @@ class FromPUML extends Command implements PromptsForMissingInput
     {file : The filename of the PlantUML class diagram.}
     {--path-migrations=database/migrations}
     {--path-models=app/Models}
-    {--no-models}';
+    {--no-models}
+    {--no-migrations}';
 
     
     /**
@@ -81,7 +82,10 @@ class FromPUML extends Command implements PromptsForMissingInput
         
         $i = 1;
         foreach ($classNamesOrdered as $className) {
-            MigrationWriter::write($className, $schema, $i, $this);
+            if(!$this->option('no-migrations')){
+                MigrationWriter::write($className, $schema, $i, $this);
+            }
+            
             if(!$this->option('no-models')){
                 ModelWriter::write($className, $schema, $this);
             }
@@ -89,12 +93,14 @@ class FromPUML extends Command implements PromptsForMissingInput
         }
 
         // Write junction tables
-        foreach ($schema->relations as $i => $relation) {
-            if(
-                ($relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne)
-                &&
-                ($relation->to[1] === Cardinality::Any || $relation->to[1] === Cardinality::AtLeastOne)){
-                    MigrationWriter::writeJunctionTable($relation->from[0], $relation->to[0], $schema, $i, $this);
+        if(!$this->option('no-migrations')){
+            foreach ($schema->relations as $i => $relation) {
+                if(
+                    ($relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne)
+                    &&
+                    ($relation->to[1] === Cardinality::Any || $relation->to[1] === Cardinality::AtLeastOne)){
+                        MigrationWriter::writeJunctionTable($relation->from[0], $relation->to[0], $schema, $i, $this);
+                }
             }
         }
     }
