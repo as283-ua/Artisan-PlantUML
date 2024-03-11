@@ -170,7 +170,7 @@ class MigrationWriter
                 $otherClassPKs = SchemaUtil::classKeys($otherClass, $command->option("use-composite-keys"));
                 $otherUsesId = isset($otherClassPKs["id"]);
 
-                $unique = $otherCardinality == Cardinality::One;
+                $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
                 $nullable = $cardinality == Cardinality::ZeroOrOne;
 
                 if($otherUsesId){
@@ -181,14 +181,14 @@ class MigrationWriter
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
                         $columnName = strtolower($relatedClassName) . "_" . $key . $j;
-                        fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "');\n");
+                        $nullable = $nullable ? "->nullable()" : "";
+                        fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "')" . $nullable . ";\n");
                         $fks[] = $columnName;
                     }
                     
-                    if($unique || $nullable){
+                    if($unique){
                         $unique = $unique ? "->unique(['" . implode("', '", $fks) . "'])" : "";
-                        $nullable = $nullable ? "->nullable(['" . implode("', '", $fks) . "'])" : "";
-                        fwrite($file, "            \$table" . $unique . $nullable . ";\n");
+                        fwrite($file, "            \$table" . $unique . ";\n");
                     }
                     fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
                 }
