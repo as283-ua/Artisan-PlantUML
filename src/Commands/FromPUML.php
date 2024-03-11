@@ -25,7 +25,8 @@ class FromPUML extends Command implements PromptsForMissingInput
     {--path-migrations=database/migrations}
     {--path-models=app/Models}
     {--no-models}
-    {--no-migrations}';
+    {--no-migrations}
+    {--use-composite-keys}';
 
     
     /**

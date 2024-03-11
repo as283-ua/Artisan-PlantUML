@@ -45,7 +45,7 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
         
         $this->
-        artisan("make:from-puml tests/Unit/Resources/address.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        artisan("make:from-puml tests/Unit/Resources/address.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
         $migration = glob(self::OUT_DIR . "/migrations" . "/*_create_addresses_table.php")[0];
@@ -58,7 +58,7 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/address2.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        artisan("make:from-puml tests/Unit/Resources/address2.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
         $migration = glob(self::OUT_DIR . "/migrations" . "/*_create_addresses_table.php")[0];
@@ -71,7 +71,7 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        artisan("make:from-puml tests/Unit/Resources/diagramaEjemplo.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
@@ -84,7 +84,7 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/doubleFk.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        artisan("make:from-puml tests/Unit/Resources/doubleFk.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
@@ -97,12 +97,38 @@ class FromPumlTest extends TestCase
         $this->cleanOutFiles();
 
         $this->
-        artisan("make:from-puml tests/Unit/Resources/relationTest.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        artisan("make:from-puml tests/Unit/Resources/relationTest.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
         assertExitCode(0);
         
         $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
 
         $this->assertEquals(3, $migrationCount);
+    }
+    
+    public function testMigrationNoComposite()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/compositeKeys.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
+
+        $this->assertEquals(2, $migrationCount);
+    }
+    
+    public function testMigrationComposite()
+    {
+        $this->cleanOutFiles();
+
+        $this->
+        artisan("make:from-puml tests/Unit/Resources/compositeKeys.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->
+        assertExitCode(0);
+        
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
+
+        $this->assertEquals(2, $migrationCount);
     }
 
     public function testModels()

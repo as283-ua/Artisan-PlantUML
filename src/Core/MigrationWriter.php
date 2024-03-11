@@ -77,13 +77,13 @@ class MigrationWriter
             }
 
             if($field->type == null){
-                $command->error("Field " . $field->name . " has no type. Skipping.");
+                $command->warn("Field " . $field->name . " has no type. Skipping.");
                 continue;
             }
 
             $type = SchemaUtil::fieldTypeToLaravelType($field->type);
             if($type == null){
-                $command->error("Field " . $field->name . " has an unsupported type. Skipping.");
+                $command->warn("Field " . $field->name . " has an unsupported type. Skipping.");
                 continue;
             }
 
@@ -107,6 +107,7 @@ class MigrationWriter
     private static function writePKs($file, $classPKs){
         $usesId = isset($classPKs["id"]);
         if($usesId){
+            echo "Uses id\n";
             fwrite($file, "            \$table->id();\n");
             return;
         }
@@ -129,8 +130,9 @@ class MigrationWriter
      * @param resource $file
      * @param ClassMetadata &$class
      * @param Schema &$schema
+     * @param Command &$command
      */
-    private static function writeFKs($file, &$class, &$schema){
+    private static function writeFKs($file, &$class, &$schema, &$command){
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
             $tableName = Pluralizer::plural(strtolower($relatedClassName));
             $j = 1;
@@ -166,7 +168,7 @@ class MigrationWriter
                 }
 
                 $otherClass = $schema->classes[$relatedClassName];
-                $otherClassPKs = SchemaUtil::classKeys($otherClass);
+                $otherClassPKs = SchemaUtil::classKeys($otherClass, $command->option("use-composite-keys"));
                 $otherUsesId = isset($otherClassPKs["id"]);
 
                 $unique = $otherCardinality == Cardinality::One;
@@ -212,12 +214,13 @@ class MigrationWriter
      * @param string $class
      * @param int $relationIndex
      * @param Schema &$schema
+     * @param Command &$command
      */
-    private static function writeFKsJunction($file, $class, $relationIndex, &$schema){
+    private static function writeFKsJunction($file, $class, &$schema, &$command){
         $tableName = Pluralizer::plural(strtolower($class));
 
         $otherClass = $schema->classes[$class];
-        $otherClassPKs = SchemaUtil::classKeys($otherClass);
+        $otherClassPKs = SchemaUtil::classKeys($otherClass, $command->option("use-composite-keys"));
         $otherUsesId = isset($otherClassPKs["id"]);
 
         if($otherUsesId){
@@ -247,17 +250,17 @@ class MigrationWriter
     {
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
         
-        $classPKs = SchemaUtil::classKeys($class);
+        $classPKs = SchemaUtil::classKeys($class, $command->option("use-composite-keys"));
 
         if($usesTimeStamps){
             fwrite($file, "            \$table->timestamps();\n");
         }
         
-        self::writeFields($file, $class, $command);
-
         self::writePKs($file, $classPKs);
 
-        self::writeFKs($file, $class, $schema);
+        self::writeFields($file, $class, $command);
+
+        self::writeFKs($file, $class, $schema, $command);
 
         fwrite($file, "        });\n");
         fwrite($file, "    }\n\n");
@@ -284,13 +287,13 @@ class MigrationWriter
      * @param Schema &$schema
      * @param Command &$command 
      */
-    private static function writeJunctionUp($file, $class1, $class2, &$schema, $relationIndex, &$command){
+    private static function writeJunctionUp($file, $class1, $class2, &$schema, &$command){
         fwrite($file, "        Schema::create('" . self::junctionTableName([$class1->name, $class2->name]) . "', function (Blueprint \$table) {\n");
 
         fwrite($file, "            \$table->id();\n");
 
-        self::writeFKsJunction($file, $class1->name, $relationIndex, $schema);
-        self::writeFKsJunction($file, $class2->name, $relationIndex, $schema);
+        self::writeFKsJunction($file, $class1->name, $schema, $command);
+        self::writeFKsJunction($file, $class2->name, $schema, $command);
 
         fwrite($file, "        });\n");
         fwrite($file, "    }\n\n");
@@ -348,7 +351,7 @@ class MigrationWriter
         $class2Data = $schema->classes[$class2];
 
         self::writeUseStatements($migration);
-        self::writeJunctionUp($migration, $class1Data, $class2Data, $schema, $relationIndex, $command);
+        self::writeJunctionUp($migration, $class1Data, $class2Data, $schema, $command);
         self::writeDown($migration, self::junctionTableName([$class1, $class2]));
 
         fclose($migration);
