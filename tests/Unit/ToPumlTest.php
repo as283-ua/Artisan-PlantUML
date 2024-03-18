@@ -1,4 +1,5 @@
 <?php
+
 namespace As283\ArtisanPlantuml\Tests;
 
 use Orchestra\Testbench\TestCase;
@@ -12,16 +13,11 @@ class ToPumlTest extends TestCase
 
     public function testCallCommand()
     {
-        $this->
-        artisan("make:to-puml nonexistentfile.puml")->
-        assertExitCode(0);
+        $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/nonexistentfile.puml")->assertExitCode(0);
     }
 
     public function testAsksFilename()
     {
-        $this->
-        artisan("make:to-puml")->
-        expectsQuestion("What is the output filename for the PlantUML class diagram?", "nonexistentfile.puml")->
-        assertExitCode(0);
+        $this->artisan("make:to-puml")->expectsQuestion("What is the output filename for the PlantUML class diagram?", "nonexistentfile.puml")->assertExitCode(0);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace As283\ArtisanPlantuml\Commands;
 
+use ArtisanPlantUML\Core\MigrationParser;
+use As283\PlantUmlProcessor\Model\Schema;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
@@ -13,9 +15,12 @@ class ToPUML extends Command implements PromptsForMissingInput
      *
      * @var string
      */
-    protected $signature = 
+    protected $signature =
     'make:to-puml
-    {file : The output filename for the PlantUML class diagram.}';
+    {file : The output filename for the PlantUML class diagram.}
+    {force: Overwrite the file if it already exists.}
+    {--path=database/migrations: Path to migrations.}
+    {--ignore-default-migration: Ignore the migrations that create the users, password reset, failed jobs and personal access tokens tables}';
 
     /**
      * The console command description.
@@ -36,12 +41,34 @@ class ToPUML extends Command implements PromptsForMissingInput
      */
     public function handle()
     {
-        if(file_exists($this->argument('file'))){
+        if (!$this->option("force") && file_exists($this->argument('file'))) {
             $overwrite = $this->choice("File " . $this->argument('file') . " already exists. Overwrite? (y/n)", ["y", "n"], 1);
-            if($overwrite == "n"){
+            if ($overwrite == "n") {
                 $this->info("Cancelling operation.");
                 return 0;
             }
         }
+
+        $schema = new Schema();
+        $migrationParser = new MigrationParser();
+
+        foreach (glob($this->option("path") . "/*.php") as $migrationFile) {
+            $file = fopen($migrationFile, "r");
+            $content = file_get_contents($migrationFile);
+            echo self::getUsefulContent($content);
+            // $migrationParser->parse([], $schema);
+        }
+    }
+
+    /**
+     * @param string $migration Migration text
+     * @return string Content inside table definition in up() 
+     */
+    private static function getUsefulContent($migration)
+    {
+        $startDef = strpos($migration, "\$table) {");
+        $endDef = strrpos($migration, "}");
+
+        return substr($migration, $startDef, $endDef - $startDef);
     }
 }
