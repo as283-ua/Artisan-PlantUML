@@ -2,7 +2,7 @@
 
 namespace As283\ArtisanPlantuml\Commands;
 
-use ArtisanPlantUML\Core\MigrationParser;
+use As283\ArtisanPlantuml\Core\MigrationParser;
 use As283\PlantUmlProcessor\Model\Schema;
 use Illuminate\Console\Command;
 use As283\PlantUmlProcessor\PlantUmlProcessor;
@@ -18,9 +18,9 @@ class ToPUML extends Command implements PromptsForMissingInput
     protected $signature =
     'make:to-puml
     {file : The output filename for the PlantUML class diagram.}
-    {force: Overwrite the file if it already exists.}
-    {--path=database/migrations: Path to migrations.}
-    {--ignore-default-migration: Ignore the migrations that create the users, password reset, failed jobs and personal access tokens tables}';
+    {--force=false : Overwrite the file if it already exists.}
+    {--path=database/migrations : Path to migrations.}
+    {--ignore-default-migration=true : Ignore the migrations that create the users, password reset, failed jobs and personal access tokens tables}';
 
     /**
      * The console command description.
@@ -55,7 +55,7 @@ class ToPUML extends Command implements PromptsForMissingInput
         foreach (glob($this->option("path") . "/*.php") as $migrationFile) {
             $file = fopen($migrationFile, "r");
             $content = file_get_contents($migrationFile);
-            echo self::getUsefulContent($content);
+            echo self::getUsefulContent($content) . "\n\n";
             // $migrationParser->parse([], $schema);
         }
     }
@@ -66,9 +66,9 @@ class ToPUML extends Command implements PromptsForMissingInput
      */
     private static function getUsefulContent($migration)
     {
-        $startDef = strpos($migration, "\$table) {");
-        $endDef = strrpos($migration, "}");
+        $startDef = strpos($migration, "Schema::create");
+        $endDef = strpos($migration, "});");
 
-        return substr($migration, $startDef, $endDef - $startDef);
+        return substr($migration, $startDef, $endDef - $startDef + 3);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace ArtisanPlantUML\Core;
+namespace As283\ArtisanPlantuml\Core;
 
 use As283\PlantUmlProcessor\Model\Schema;
 use Illuminate\Support\Str;

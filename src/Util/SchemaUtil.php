@@ -1,4 +1,5 @@
 <?php
+
 namespace As283\ArtisanPlantuml\Util;
 
 use As283\ArtisanPlantuml\Exceptions\CycleException;
@@ -8,12 +9,88 @@ use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Relation;
 use As283\PlantUmlProcessor\Model\Type;
 
-class SchemaUtil{
+class SchemaUtil
+{
+    public const named_types = [
+        "bigIncrements",
+        "bigInteger",
+        "binary",
+        "boolean",
+        "char",
+        "dateTimeTz",
+        "dateTime",
+        "date",
+        "decimal",
+        "double",
+        "enum",
+        "float",
+        "foreignId",
+        "foreignIdFor",
+        "foreignUlid",
+        "foreignUuid",
+        "geometryCollection",
+        "geometry",
+        "increments",
+        "integer",
+        "ipAddress",
+        "json",
+        "jsonb",
+        "lineString",
+        "longText",
+        "macAddress",
+        "mediumIncrements",
+        "mediumInteger",
+        "mediumText",
+        "morphs",
+        "multiLineString",
+        "multiPoint",
+        "multiPolygon",
+        "nullableMorphs",
+        "nullableTimestamps",
+        "nullableUlidMorphs",
+        "nullableUuidMorphs",
+        "point",
+        "polygon",
+        "set",
+        "smallIncrements",
+        "smallInteger",
+        "softDeletesTz",
+        "softDeletes",
+        "string",
+        "text",
+        "timeTz",
+        "time",
+        "timestampTz",
+        "timestamp",
+        "timestampsTz",
+        "tinyIncrements",
+        "tinyInteger",
+        "tinyText",
+        "unsignedBigInteger",
+        "unsignedDecimal",
+        "unsignedInteger",
+        "unsignedMediumInteger",
+        "unsignedSmallInteger",
+        "unsignedTinyInteger",
+        "ulidMorphs",
+        "uuidMorphs",
+        "ulid",
+        "uuid",
+        "year",
+    ];
+
+    public const unnamed_types = [
+        "id",
+        "rememberToken",
+        "timestamps",
+    ];
+
     /**
      * @param Schema &$schema
      * @return mixed
      */
-    private static function initClassMap(&$schema){
+    private static function initClassMap(&$schema)
+    {
         /*
         [
             "class1" => [
@@ -31,15 +108,15 @@ class SchemaUtil{
         ]
         */
         $classMap = [];
-        foreach($schema->classes as $class){
+        foreach ($schema->classes as $class) {
 
             $classMap[$class->name] = [
                 "resolved" => false,
                 "relations" => []
             ];
-            
+
             foreach ($class->relatedClasses as $otherClassName => $relationIndexes) {
-                foreach ($relationIndexes as $index){
+                foreach ($relationIndexes as $index) {
                     $classMap[$class->name]["relations"][] = [
                         "resolved" => false,
                         "class" => $otherClassName,
@@ -48,11 +125,12 @@ class SchemaUtil{
                 }
             }
         }
-        
+
         return $classMap;
     }
 
-    private static function printClassMap(&$classMap){
+    private static function printClassMap(&$classMap)
+    {
         echo json_encode($classMap, JSON_PRETTY_PRINT) . "\n";
     }
 
@@ -62,7 +140,8 @@ class SchemaUtil{
      * @return array[string]
      * @throws CycleException
      */
-    public static function orderClasses(&$schema){
+    public static function orderClasses(&$schema)
+    {
         $classMap = self::initClassMap($schema);
 
         /**
@@ -75,9 +154,9 @@ class SchemaUtil{
         $unorderedCount = count($classMap);
         $oldUnorderedCount = -1;
 
-        while(!$resolvedAll){
+        while (!$resolvedAll) {
             // failsafe
-            if($oldUnorderedCount === $unorderedCount){
+            if ($oldUnorderedCount === $unorderedCount) {
                 print_r($classMap);
                 throw new CycleException(array_keys($classMap));
             }
@@ -88,39 +167,39 @@ class SchemaUtil{
 
                 // check if class is resolved or resolvable
                 $resolvable = true;
-                foreach($state["relations"] as &$relation){
-                    if($relation["resolved"]){
+                foreach ($state["relations"] as &$relation) {
+                    if ($relation["resolved"]) {
                         continue;
                     }
 
                     $relationData = $schema->relations[$relation["index"]];
 
                     $cardinality = self::getCardinality($classname, $relationData);
-                    if($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne){
+                    if ($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne) {
                         $relation["resolved"] = true;
                         continue;
                     }
 
-                    if($relation["class"] === $classname){
+                    if ($relation["class"] === $classname) {
                         $relation["resolved"] = true;
                         continue;
                     }
 
                     // find out if other class also has 0..1 or 1 cardinality
                     $otherCardinality = self::getCardinality($relation["class"], $relationData);
-                    
-                    if($cardinality === Cardinality::ZeroOrOne && $otherCardinality === Cardinality::One){
+
+                    if ($cardinality === Cardinality::ZeroOrOne && $otherCardinality === Cardinality::One) {
                         $relation["resolved"] = true;
                         continue;
                     }
 
-                    if($cardinality === $otherCardinality && $relation["class"] < $classname){
+                    if ($cardinality === $otherCardinality && $relation["class"] < $classname) {
                         $relation["resolved"] = true;
                         continue;
                     }
-                    
+
                     // depends on other class, has fk to it
-                    if(!array_key_exists($relation["class"], $classMap)){
+                    if (!array_key_exists($relation["class"], $classMap)) {
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -129,7 +208,7 @@ class SchemaUtil{
                 }
 
                 $state["resolved"] = $resolvable;
-                if($resolvable){
+                if ($resolvable) {
                     $orderedClasses[] = $classname;
                 }
 
@@ -138,7 +217,7 @@ class SchemaUtil{
 
             // clean up $classMap by removing ordered ones
             foreach ($orderedClasses as $class) {
-                if(array_key_exists($class, $classMap)){
+                if (array_key_exists($class, $classMap)) {
                     unset($classMap[$class]);
                 }
             }
@@ -156,9 +235,10 @@ class SchemaUtil{
      * @param Relation $relation2
      * @return bool
      */
-    public static function sameRelationSources($relation1, $relation2){
+    public static function sameRelationSources($relation1, $relation2)
+    {
         return ($relation1->from[0] === $relation2->from[0] && $relation1->to[0] === $relation2->to[0]) ||
-               ($relation1->from[0] === $relation2->to[0] && $relation1->to[0] === $relation2->from[0]);
+            ($relation1->from[0] === $relation2->to[0] && $relation1->to[0] === $relation2->from[0]);
     }
 
     /**
@@ -167,10 +247,11 @@ class SchemaUtil{
      * @param Relation $relation
      * @return Cardinality|null
      */
-    public static function getCardinality($class, $relation){
-        if($relation->from[0] === $class){
+    public static function getCardinality($class, $relation)
+    {
+        if ($relation->from[0] === $class) {
             return $relation->from[1];
-        } else if($relation->to[0] === $class){
+        } else if ($relation->to[0] === $class) {
             return $relation->to[1];
         }
         return null;
@@ -182,23 +263,24 @@ class SchemaUtil{
      * @param bool $allowsComposite
      * @return array<string,Type> List of fields that are part of the primary key . ["id"] if no primary key is defined
      */
-    public static function classKeys(&$class, $allowsComposite = false){
+    public static function classKeys(&$class, $allowsComposite = false)
+    {
         $keys = [];
-        foreach($class->fields as $field){
-            if($field->name === "id"){
+        foreach ($class->fields as $field) {
+            if ($field->name === "id") {
                 $field->primary = true;
                 // might ignore type and just use id()
                 return [$field->name => $field->type];
-            } else if($field->primary){
+            } else if ($field->primary) {
                 $keys[$field->name] = $field->type;
             }
         }
 
-        if(count($keys) > 1 && !$allowsComposite){
+        if (count($keys) > 1 && !$allowsComposite) {
             $keys = ["id" => Type::int];
         }
 
-        if(count($keys) == 0){
+        if (count($keys) == 0) {
             $keys = ["id" => Type::int];
         }
 

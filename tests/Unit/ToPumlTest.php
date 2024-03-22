@@ -2,6 +2,7 @@
 
 namespace As283\ArtisanPlantuml\Tests;
 
+use As283\ArtisanPlantuml\Commands\ToPUML;
 use Orchestra\Testbench\TestCase;
 
 class ToPumlTest extends TestCase
@@ -19,5 +20,10 @@ class ToPumlTest extends TestCase
     public function testAsksFilename()
     {
         $this->artisan("make:to-puml")->expectsQuestion("What is the output filename for the PlantUML class diagram?", "nonexistentfile.puml")->assertExitCode(0);
+    }
+
+    public function testGeneral()
+    {
+        $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations")->assertExitCode(0);
     }
 }
