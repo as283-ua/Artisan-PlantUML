@@ -55,9 +55,13 @@ class ToPUML extends Command implements PromptsForMissingInput
         foreach (glob($this->option("path") . "/*.php") as $migrationFile) {
             $file = fopen($migrationFile, "r");
             $content = file_get_contents($migrationFile);
-            echo self::getUsefulContent($content) . "\n\n";
-            // $migrationParser->parse([], $schema);
+            $content = self::getUsefulContent($content);
+            $migrationParser->parse($content, $schema);
         }
+
+        $f = fopen($this->argument("file"), "w");
+        fwrite($f, PlantUmlProcessor::serialize($schema));
+        fclose($f);
     }
 
     /**

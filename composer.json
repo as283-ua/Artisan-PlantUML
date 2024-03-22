@@ -5,7 +5,10 @@
     "autoload": {
         "psr-4": {
             "As283\\ArtisanPlantuml\\": "src/"
-        }
+        },
+        "files": [
+            "src/Util/LaravelTypes.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
