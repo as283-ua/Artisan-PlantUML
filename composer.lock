@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "git@github.com:as283-ua/PlantUML-Processor.git",
-                "reference": "d7b0840f81cf3ab56618560f7471bc7ff3cae179"
+                "reference": "6d6dff6a1797d99cd22b6e481e4abe9084d5e2a4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/as283-ua/PlantUML-Processor/zipball/d7b0840f81cf3ab56618560f7471bc7ff3cae179",
-                "reference": "d7b0840f81cf3ab56618560f7471bc7ff3cae179",
+                "url": "https://api.github.com/repos/as283-ua/PlantUML-Processor/zipball/6d6dff6a1797d99cd22b6e481e4abe9084d5e2a4",
+                "reference": "6d6dff6a1797d99cd22b6e481e4abe9084d5e2a4",
                 "shasum": ""
             },
             "require-dev": {
@@ -56,7 +56,7 @@
                 "source": "https://github.com/as283-ua/PlantUML-Processor/tree/main",
                 "issues": "https://github.com/as283-ua/PlantUML-Processor/issues"
             },
-            "time": "2024-03-08T22:25:24+00:00"
+            "time": "2024-03-22T16:06:27+00:00"
         }
     ],
     "packages-dev": [

@@ -2,6 +2,12 @@
 
 namespace As283\ArtisanPlantuml\Util;
 
+const UNNAMEDTYPES = [
+    "id",
+    "rememberToken",
+    "timestamps",
+];
+
 const NAMEDTYPES = [
     "bigIncrements",
     "bigInteger",
@@ -15,8 +21,6 @@ const NAMEDTYPES = [
     "double",
     "enum",
     "float",
-    "foreignId",
-    "foreignIdFor",
     "foreignUlid",
     "foreignUuid",
     "geometryCollection",
