@@ -24,12 +24,20 @@ class MigrationParser
     private Lexer $lex;
 
     private int $DEFINITION;
+
     private int $TYPE;
     private int $TYPE_WITH_MODIFIER;
+    private int $TYPE_WITH_TWO_MODIFIER;
+
+    private int $TYPE_EXTRA_ARGS;
+    private int $TYPE_WITH_MODIFIER_EXTRA_ARGS;
+    private int $TYPE_WITH_TWO_MODIFIER_EXTRA_ARGS;
+
     private int $NAMELESS_TYPE;
+
     private int $MODIFIER;
     private int $MODIFIER_MANY;
-    private int $TYPE_WITH_TWO_MODIFIER;
+
     private int $FOREIGN;
     private int $FOREIGN_ID;
     private int $FOREIGN_MANY;
@@ -61,6 +69,7 @@ class MigrationParser
         $this->parser->nonassoc("FOREIGN");
         $this->parser->nonassoc("FOREIGN_ID");
         $this->parser->token("FOREIGN_LOCATION");
+        $this->parser->token("ARG");
 
         /*
         * RULES
@@ -77,11 +86,18 @@ class MigrationParser
         $this->parser->push("TEXTS", "TEXTS COMMA TEXT");
         $this->parser->push("TEXTS", "TEXTS COMMA");
 
+        $this->parser->push("ARGS", "ARG");
+        $this->parser->push("ARGS", "ARGS COMMA ARG");
+        $this->parser->push("ARGS", "ARGS COMMA");
+
         $this->TYPE_WITH_MODIFIER = $this->parser->push("SPECS", "TYPE '(' TEXT ')' '->' MODIFIER '(' ')'");
+        $this->TYPE_WITH_MODIFIER_EXTRA_ARGS = $this->parser->push("SPECS", "TYPE '(' TEXT COMMA ARGS ')' '->' MODIFIER '(' ')'");
         $this->TYPE_WITH_TWO_MODIFIER = $this->parser->push("SPECS", "TYPE '(' TEXT ')' '->' MODIFIER '(' ')' '->' MODIFIER '(' ')'");
+        $this->TYPE_WITH_TWO_MODIFIER_EXTRA_ARGS = $this->parser->push("SPECS", "TYPE '(' TEXT COMMA ARGS ')' '->' MODIFIER '(' ')' '->' MODIFIER '(' ')'");
         $this->MODIFIER_MANY = $this->parser->push("SPECS", "MODIFIER '(' '[' TEXTS ']' ')'");
         $this->MODIFIER = $this->parser->push("SPECS", "MODIFIER '(' TEXT ')'");
         $this->TYPE = $this->parser->push("SPECS", "TYPE '(' TEXT ')'");
+        $this->TYPE_EXTRA_ARGS = $this->parser->push("SPECS", "TYPE '(' TEXT COMMA ARGS')'");
         $this->NAMELESS_TYPE = $this->parser->push("SPECS", "NAMELESS_TYPE '(' ')'");
         $this->FOREIGN_CUSTOM_MANY = $this->parser->push("SPECS", "FOREIGN '(' '[' TEXTS ']' ')' '->' FOREIGN_LOCATION '(' '[' TEXTS ']' ')' '->' FOREIGN_LOCATION '(' TEXT ')'");
         $this->FOREIGN_CUSTOM = $this->parser->push("SPECS", "FOREIGN '(' TEXT ')' '->' FOREIGN_LOCATION '(' TEXT ')' '->' FOREIGN_LOCATION '(' TEXT ')'");
@@ -98,7 +114,8 @@ class MigrationParser
         $this->lex->push("(id|rememberToken|timestamps)", $this->parser->tokenId("NAMELESS_TYPE"));
         $this->lex->push("(unique|nullable|primary)", $this->parser->tokenId("MODIFIER"));
         $this->lex->push(";", $this->parser->tokenId("END"));
-        $this->lex->push("(\\\"\w*\\\"|'\w*')", $this->parser->tokenId("TEXT"));
+        $this->lex->push("(\\\"\\w*\\\"|'\\w*')", $this->parser->tokenId("TEXT"));
+        $this->lex->push("\\w+", $this->parser->tokenId("ARG"));
         $this->lex->push("\\(", $this->parser->tokenId("'('"));
         $this->lex->push("\\)", $this->parser->tokenId("')'"));
         $this->lex->push("\\,", $this->parser->tokenId("COMMA"));
@@ -159,9 +176,10 @@ class MigrationParser
 
     /**
      * @param ClassMetadata &$class
+     * @param bool $ignoreArgs
      * @return void
      */
-    private function handleType(&$class)
+    private function handleType(&$class, $ignoreArgs = true)
     {
         $type = $this->parser->sigil(0);
         $fieldname = self::removeQuotes($this->parser->sigil(2));
@@ -184,13 +202,14 @@ class MigrationParser
 
     /**
      * @param ClassMetadata &$class
+     * @param bool $ignoreArgs
      * @return void
      */
-    private function handleTypeWithModifier(&$class)
+    private function handleTypeWithModifier(&$class, $ignoreArgs = true)
     {
         $type = $this->parser->sigil(0);
         $fieldname = self::removeQuotes($this->parser->sigil(2));
-        $modifier = $this->parser->sigil(5);
+        $modifier = $this->parser->sigil($ignoreArgs ? 5 : 7);
 
         $field = new Field();
         $field->name = $fieldname;
@@ -211,13 +230,14 @@ class MigrationParser
 
     /**
      * @param ClassMetadata &$class
+     * @param bool $ignoreArgs
      * @return void
      */
-    private function handleTypeWithTwoModifiers(&$class)
+    private function handleTypeWithTwoModifiers(&$class, $ignoreArgs = true)
     {
         $type = $this->parser->sigil(0);
         $fieldname = self::removeQuotes($this->parser->sigil(2));
-        $modifiers = [$this->parser->sigil(5), $this->parser->sigil(9)];
+        $modifiers = [$this->parser->sigil($ignoreArgs ? 5 : 7), $this->parser->sigil($ignoreArgs ? 9 : 11)];
 
         $field = new Field();
         $field->name = $fieldname;
@@ -594,6 +614,18 @@ class MigrationParser
                         case $this->TYPE_WITH_TWO_MODIFIER:
                             echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class);
+                            break;
+                        case $this->TYPE_EXTRA_ARGS:
+                            echo "TYPE\n";
+                            $this->handleType($class);
+                            break;
+                        case $this->TYPE_WITH_MODIFIER_EXTRA_ARGS:
+                            echo "TYPE_WITH_MODIFIER\n";
+                            $this->handleTypeWithModifier($class, false);
+                            break;
+                        case $this->TYPE_WITH_TWO_MODIFIER_EXTRA_ARGS:
+                            echo "TYPE_WITH_TWO_MODIFIER\n";
+                            $this->handleTypeWithTwoModifiers($class, false);
                             break;
                         case $this->MODIFIER:
                             echo "MODIFIER\n";
