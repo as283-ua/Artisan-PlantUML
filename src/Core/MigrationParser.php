@@ -115,7 +115,6 @@ class MigrationParser
         $this->lex->push("(unique|nullable|primary)", $this->parser->tokenId("MODIFIER"));
         $this->lex->push(";", $this->parser->tokenId("END"));
         $this->lex->push("(\\\"\\w*\\\"|'\\w*')", $this->parser->tokenId("TEXT"));
-        $this->lex->push("\\w+", $this->parser->tokenId("ARG"));
         $this->lex->push("\\(", $this->parser->tokenId("'('"));
         $this->lex->push("\\)", $this->parser->tokenId("')'"));
         $this->lex->push("\\,", $this->parser->tokenId("COMMA"));
@@ -128,6 +127,7 @@ class MigrationParser
         $this->lex->push("(references|on)", $this->parser->tokenId("FOREIGN_LOCATION"));
         $this->lex->push("Schema::create", $this->parser->tokenId("SCHEMA_CREATE"));
         $this->lex->push("function\\s*\\(\\s*Blueprint\\s+\\\$table\\s*\\)", $this->parser->tokenId("DEF_LAMBDA"));
+        $this->lex->push("\\w+", $this->parser->tokenId("ARG"));
         $this->lex->push("\\s+", Token::SKIP);
         $this->lex->push("->constrained\\(\\)", Token::SKIP);
         $this->lex->push("->useCurrent\\(\\)", Token::SKIP);
