@@ -113,6 +113,7 @@ class MigrationParser
         $this->lex->push("function\\s*\\(\\s*Blueprint\\s+\\\$table\\s*\\)", $this->parser->tokenId("DEF_LAMBDA"));
         $this->lex->push("\\s+", Token::SKIP);
         $this->lex->push("->constrained\\(\\)", Token::SKIP);
+        $this->lex->push("->useCurrent\\(\\)", Token::SKIP);
         $this->lex->push("->((cascadeOnDelete|nullOnDelete|noActionOnDelete|restrictOnDelete)\\(\\)|onDelete\\(\\\"\w+\\\"\\))", Token::SKIP);
 
         $this->lex->build();
