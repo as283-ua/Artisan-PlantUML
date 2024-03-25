@@ -154,7 +154,6 @@ class MigrationParser
         } else {
             $class->name = $classname;
         }
-        // echo "{$classname}\n\n";
     }
 
     /**
@@ -283,7 +282,7 @@ class MigrationParser
             function ($x) {
                 return trim($x);
             },
-            explode(",", self::removeQuotes($this->parser->sigil(2)))
+            explode(",", self::removeQuotes($this->parser->sigil(3)))
         );
 
         $found = 0;
@@ -333,7 +332,7 @@ class MigrationParser
             return;
         }
 
-        $isNullable = $class->fields[$i]->nullable;
+        $fieldCopy = $class->fields[$i];
 
         array_splice($class->fields, $i, 1);
 
@@ -345,13 +344,19 @@ class MigrationParser
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $cardinality = Cardinality::One;
-        if ($isNullable) {
+        if ($fieldCopy->nullable) {
             $cardinality = Cardinality::ZeroOrOne;
         }
+
+        $otherCardinality = Cardinality::Any;
+        if ($fieldCopy->unique) {
+            $otherCardinality = Cardinality::ZeroOrOne;
+        }
+
         $relation = new Relation();
         $relation->from = ["", $cardinality];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
-        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->to = [$otherclassname, $otherCardinality];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -397,7 +402,7 @@ class MigrationParser
         }, explode(",", self::removeQuotes($this->parser->sigil(3))));
 
         $found = 0;
-        $isNullable = false;
+        $fieldCopy = null;
         // remove FK fields
         for ($i = 0; $i < count($class->fields); $i++) {
             if ($found >= count($fieldnames)) {
@@ -405,7 +410,7 @@ class MigrationParser
             }
 
             if (in_array($class->fields[$i]->name, $fieldnames)) {
-                $isNullable = $class->fields[$i]->nullable;
+                $fieldCopy = $class->fields[$i];
                 array_splice($class->fields, $i, 1);
                 $found++;
                 // avoid problems because of the splice and i++
@@ -421,13 +426,18 @@ class MigrationParser
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $cardinality = Cardinality::One;
-        if ($isNullable) {
+        if ($fieldCopy->nullable) {
             $cardinality = Cardinality::ZeroOrOne;
+        }
+
+        $otherCardinality = Cardinality::Any;
+        if ($fieldCopy->unique) {
+            $otherCardinality = Cardinality::ZeroOrOne;
         }
 
         $relation = new Relation();
         $relation->from = ["", $cardinality];
-        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->to = [$otherclassname, $otherCardinality];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -456,7 +466,7 @@ class MigrationParser
             return;
         }
 
-        $isNullable = $class->fields[$i]->nullable;
+        $fieldCopy = $class->fields[$i];
         array_splice($class->fields, $i, 1);
 
 
@@ -470,13 +480,18 @@ class MigrationParser
         }
 
         $cardinality = Cardinality::One;
-        if ($isNullable) {
+        if ($fieldCopy->nullable) {
             $cardinality = Cardinality::ZeroOrOne;
+        }
+
+        $otherCardinality = Cardinality::Any;
+        if ($fieldCopy->unique) {
+            $otherCardinality = Cardinality::ZeroOrOne;
         }
 
         $relation = new Relation();
         $relation->from = ["", $cardinality];
-        $relation->to = [$otherclass, Cardinality::Any];
+        $relation->to = [$otherclass, $otherCardinality];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -496,14 +511,14 @@ class MigrationParser
         }, explode(",", self::removeQuotes($this->parser->sigil(3))));
 
         $found = 0;
-        $isNullable = false;
+        $fieldCopy = null;
         for ($i = 0; $i < count($class->fields); $i++) {
             if ($found >= count($fieldnames)) {
                 break;
             }
 
             if (in_array($class->fields[$i]->name, $fieldnames)) {
-                $isNullable = $class->fields[$i]->nullable;
+                $fieldCopy = $class->fields[$i];
                 array_splice($class->fields, $i, 1);
                 $found++;
                 // avoid problems because of the splice and i++
@@ -519,13 +534,18 @@ class MigrationParser
         }
 
         $cardinality = Cardinality::One;
-        if ($isNullable) {
+        if ($fieldCopy->nullable) {
             $cardinality = Cardinality::ZeroOrOne;
+        }
+
+        $otherCardinality = Cardinality::Any;
+        if ($fieldCopy->unique) {
+            $otherCardinality = Cardinality::ZeroOrOne;
         }
 
         $relation = new Relation();
         $relation->from = ["", $cardinality];
-        $relation->to = [$otherclass, Cardinality::Any];
+        $relation->to = [$otherclass, $otherCardinality];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -555,51 +575,51 @@ class MigrationParser
                 case Parser::ACTION_REDUCE:
                     switch ($this->parser->reduceId) {
                         case $this->DEFINITION:
-                            // echo "DEFINITION\n";
+                            echo "DEFINITION\n";
                             $this->handleDefinition($schema, $class);
                             break;
                         case $this->TYPE:
-                            // echo "TYPE\n";
+                            echo "TYPE\n";
                             $this->handleType($class);
                             break;
                         case $this->NAMELESS_TYPE:
-                            // echo "NAMELESS_TYPE\n";
+                            echo "NAMELESS_TYPE\n";
                             $this->handleNameless($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER:
-                            // echo "TYPE_WITH_MODIFIER\n";
+                            echo "TYPE_WITH_MODIFIER\n";
                             $this->handleTypeWithModifier($class);
                             break;
                         case $this->TYPE_WITH_TWO_MODIFIER:
-                            // echo "TYPE_WITH_TWO_MODIFIER\n";
+                            echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class);
                             break;
                         case $this->MODIFIER:
-                            // echo "MODIFIER\n";
+                            echo "MODIFIER\n";
                             $this->handleModifier($class);
                             break;
                         case $this->MODIFIER_MANY:
-                            // echo "MODIFIER_MANY\n";
+                            echo "MODIFIER_MANY\n";
                             $this->handleManyModifiers($class);
                             break;
                         case $this->FOREIGN:
-                            // echo "FOREIGN\n";
+                            echo "FOREIGN\n";
                             $this->handleForeign($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_ID:
-                            // echo "FOREIGN_ID\n";
+                            echo "FOREIGN_ID\n";
                             $this->handleForeignId($schema, $relationIndexes);
                             break;
                         case $this->FOREIGN_MANY:
-                            // echo "FOREIGN_MANY\n";
+                            echo "FOREIGN_MANY\n";
                             $this->handleForeignMany($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM:
-                            // echo "FOREIGN_CUSTOM\n";
+                            echo "FOREIGN_CUSTOM\n";
                             $this->handleForeignCustom($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM_MANY:
-                            // echo "FOREIGN_CUSTOM_MANY\n";
+                            echo "FOREIGN_CUSTOM_MANY\n";
                             $this->handleManyForeignCustom($schema, $class, $relationIndexes);
                             break;
                     }
