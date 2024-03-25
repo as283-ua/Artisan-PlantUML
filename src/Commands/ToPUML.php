@@ -29,6 +29,13 @@ class ToPUML extends Command implements PromptsForMissingInput
      */
     protected $description = 'Create a .puml file from database migrations and models';
 
+    private $defaultMigrations = [
+        "2014_10_12_000000_create_users_table.php",
+        "2014_10_12_100000_create_password_reset_tokens_table.php",
+        "2019_08_19_000000_create_failed_jobs_table.php",
+        "2019_12_14_000001_create_personal_access_tokens_table.php"
+    ];
+
     protected function promptForMissingArgumentsUsing()
     {
         return [
@@ -53,6 +60,9 @@ class ToPUML extends Command implements PromptsForMissingInput
         $migrationParser = new MigrationParser();
 
         foreach (glob($this->option("path") . "/*.php") as $migrationFile) {
+            if ($this->option("ignore-default-migration") && in_array(basename($migrationFile), $this->defaultMigrations)) {
+                continue;
+            }
             $file = fopen($migrationFile, "r");
             $content = file_get_contents($migrationFile);
             $content = self::getUsefulContent($content);
