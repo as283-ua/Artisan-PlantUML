@@ -154,6 +154,7 @@ class MigrationParser
         } else {
             $class->name = $classname;
         }
+        // echo "{$classname}\n\n";
     }
 
     /**
@@ -181,6 +182,10 @@ class MigrationParser
         }
     }
 
+    /**
+     * @param ClassMetadata &$class
+     * @return void
+     */
     private function handleTypeWithModifier(&$class)
     {
         $type = $this->parser->sigil(0);
@@ -204,6 +209,10 @@ class MigrationParser
         $class->fields[] = $field;
     }
 
+    /**
+     * @param ClassMetadata &$class
+     * @return void
+     */
     private function handleTypeWithTwoModifiers(&$class)
     {
         $type = $this->parser->sigil(0);
@@ -229,6 +238,10 @@ class MigrationParser
         $class->fields[] = $field;
     }
 
+    /**
+     * @param ClassMetadata &$class
+     * @return void
+     */
     private function handleModifier(&$class)
     {
 
@@ -259,6 +272,10 @@ class MigrationParser
         }
     }
 
+    /**
+     * @param ClassMetadata &$class
+     * @return void
+     */
     private function handleManyModifiers(&$class)
     {
         $modifier = $this->parser->sigil(0);
@@ -294,6 +311,12 @@ class MigrationParser
         }
     }
 
+    /**
+     * @param Schema &$schema
+     * @param ClassMetadata &$class
+     * @param int[] &$relationIndexes
+     * @return void
+     */
     private function handleForeign(&$schema, &$class, &$relationIndexes)
     {
         $fieldname = self::removeQuotes($this->parser->sigil(2));
@@ -310,6 +333,8 @@ class MigrationParser
             return;
         }
 
+        $isNullable = $class->fields[$i]->nullable;
+
         array_splice($class->fields, $i, 1);
 
         $class_pk = explode("_", $fieldname);
@@ -317,10 +342,14 @@ class MigrationParser
             return;
         }
 
-        $otherclassname = ucfirst($class_pk[0]);
+        $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
+        $cardinality = Cardinality::One;
+        if ($isNullable) {
+            $cardinality = Cardinality::ZeroOrOne;
+        }
         $relation = new Relation();
-        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->from = ["", $cardinality];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
         $relation->to = [$otherclassname, Cardinality::Any];
         $relation->type = RelationType::Association;
@@ -329,6 +358,11 @@ class MigrationParser
         $relationIndexes[] = count($schema->relations) - 1;
     }
 
+    /**
+     * @param Schema &$schema
+     * @param int[] &$relationIndexes
+     * @return void
+     */
     private function handleForeignId(&$schema, &$relationIndexes)
     {
         $fieldname = self::removeQuotes($this->parser->sigil(2));
@@ -338,7 +372,7 @@ class MigrationParser
             return;
         }
 
-        $otherclassname = ucfirst($class_pk[0]);
+        $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $relation = new Relation();
         $relation->from = ["", Cardinality::ZeroOrOne];
@@ -350,6 +384,12 @@ class MigrationParser
         $relationIndexes[] = count($schema->relations) - 1;
     }
 
+    /**
+     * @param Schema &$schema
+     * @param ClassMetadata &$class
+     * @param int[] &$relationIndexes
+     * @return void
+     */
     private function handleForeignMany(&$schema, &$class, &$relationIndexes)
     {
         $fieldnames = array_map(function ($x) {
@@ -357,6 +397,7 @@ class MigrationParser
         }, explode(",", self::removeQuotes($this->parser->sigil(3))));
 
         $found = 0;
+        $isNullable = false;
         // remove FK fields
         for ($i = 0; $i < count($class->fields); $i++) {
             if ($found >= count($fieldnames)) {
@@ -364,6 +405,7 @@ class MigrationParser
             }
 
             if (in_array($class->fields[$i]->name, $fieldnames)) {
+                $isNullable = $class->fields[$i]->nullable;
                 array_splice($class->fields, $i, 1);
                 $found++;
                 // avoid problems because of the splice and i++
@@ -376,10 +418,15 @@ class MigrationParser
             return;
         }
 
-        $otherclassname = ucfirst($class_pk[0]);
+        $otherclassname = Str::singular(ucfirst($class_pk[0]));
+
+        $cardinality = Cardinality::One;
+        if ($isNullable) {
+            $cardinality = Cardinality::ZeroOrOne;
+        }
 
         $relation = new Relation();
-        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->from = ["", $cardinality];
         $relation->to = [$otherclassname, Cardinality::Any];
         $relation->type = RelationType::Association;
 
@@ -387,6 +434,12 @@ class MigrationParser
         $relationIndexes[] = count($schema->relations) - 1;
     }
 
+    /**
+     * @param Schema &$schema
+     * @param ClassMetadata &$class
+     * @param int[] &$relationIndexes
+     * @return void
+     */
     private function handleForeignCustom(&$schema, &$class, &$relationIndexes)
     {
         $fieldname = self::removeQuotes($this->parser->sigil(2));
@@ -403,20 +456,26 @@ class MigrationParser
             return;
         }
 
+        $isNullable = $class->fields[$i]->nullable;
         array_splice($class->fields, $i, 1);
 
 
         $otherclass = "";
         if ($this->parser->sigil(5) === "on") {
-            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(7)));
+            $otherclass = Str::singular(ucfirst(self::removeQuotes($this->parser->sigil(7))));
         } else if ($this->parser->sigil(10) === "on") {
-            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(12)));
+            $otherclass = Str::singular(ucfirst(self::removeQuotes($this->parser->sigil(12))));
         } else {
             return;
         }
 
+        $cardinality = Cardinality::One;
+        if ($isNullable) {
+            $cardinality = Cardinality::ZeroOrOne;
+        }
+
         $relation = new Relation();
-        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->from = ["", $cardinality];
         $relation->to = [$otherclass, Cardinality::Any];
         $relation->type = RelationType::Association;
 
@@ -424,6 +483,12 @@ class MigrationParser
         $relationIndexes[] = count($schema->relations) - 1;
     }
 
+    /**
+     * @param Schema &$schema
+     * @param ClassMetadata &$class
+     * @param int[] &$relationIndexes
+     * @return void
+     */
     private function handleManyForeignCustom(&$schema, &$class, &$relationIndexes)
     {
         $fieldnames = array_map(function ($x) {
@@ -431,12 +496,14 @@ class MigrationParser
         }, explode(",", self::removeQuotes($this->parser->sigil(3))));
 
         $found = 0;
+        $isNullable = false;
         for ($i = 0; $i < count($class->fields); $i++) {
             if ($found >= count($fieldnames)) {
                 break;
             }
 
             if (in_array($class->fields[$i]->name, $fieldnames)) {
+                $isNullable = $class->fields[$i]->nullable;
                 array_splice($class->fields, $i, 1);
                 $found++;
                 // avoid problems because of the splice and i++
@@ -444,21 +511,20 @@ class MigrationParser
             }
         }
 
-        if ($i == count($class->fields)) {
-            return;
-        }
-
-        array_splice($class->fields, $i, 1);
-
         $otherclass = "";
         if ($this->parser->sigil(14) === "on") {
-            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(16)));
+            $otherclass = Str::singular(ucfirst(self::removeQuotes($this->parser->sigil(16))));
         } else {
             return;
         }
 
+        $cardinality = Cardinality::One;
+        if ($isNullable) {
+            $cardinality = Cardinality::ZeroOrOne;
+        }
+
         $relation = new Relation();
-        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->from = ["", $cardinality];
         $relation->to = [$otherclass, Cardinality::Any];
         $relation->type = RelationType::Association;
 
@@ -489,39 +555,51 @@ class MigrationParser
                 case Parser::ACTION_REDUCE:
                     switch ($this->parser->reduceId) {
                         case $this->DEFINITION:
+                            // echo "DEFINITION\n";
                             $this->handleDefinition($schema, $class);
                             break;
                         case $this->TYPE:
+                            // echo "TYPE\n";
                             $this->handleType($class);
                             break;
                         case $this->NAMELESS_TYPE:
+                            // echo "NAMELESS_TYPE\n";
                             $this->handleNameless($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER:
+                            // echo "TYPE_WITH_MODIFIER\n";
                             $this->handleTypeWithModifier($class);
                             break;
                         case $this->TYPE_WITH_TWO_MODIFIER:
+                            // echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class);
                             break;
                         case $this->MODIFIER:
+                            // echo "MODIFIER\n";
                             $this->handleModifier($class);
                             break;
                         case $this->MODIFIER_MANY:
+                            // echo "MODIFIER_MANY\n";
                             $this->handleManyModifiers($class);
                             break;
                         case $this->FOREIGN:
+                            // echo "FOREIGN\n";
                             $this->handleForeign($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_ID:
+                            // echo "FOREIGN_ID\n";
                             $this->handleForeignId($schema, $relationIndexes);
                             break;
                         case $this->FOREIGN_MANY:
+                            // echo "FOREIGN_MANY\n";
                             $this->handleForeignMany($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM:
+                            // echo "FOREIGN_CUSTOM\n";
                             $this->handleForeignCustom($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM_MANY:
+                            // echo "FOREIGN_CUSTOM_MANY\n";
                             $this->handleManyForeignCustom($schema, $class, $relationIndexes);
                             break;
                     }
@@ -530,10 +608,22 @@ class MigrationParser
             $this->parser->advance();
         } while (Parser::ACTION_ACCEPT != $this->parser->action);
 
-        $schema->classes[$class->name] = $class;
+        if ((count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
+            $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
+            $relation = new Relation();
+            $relation->from = [$classes[0], Cardinality::Any];
+            $relation->to = [$classes[1], Cardinality::Any];
+            $relation->type = RelationType::Association;
 
-        foreach ($relationIndexes as $i) {
-            $schema->relations[$i]->from[0] = $class->name;
+            $schema->relations[] = $relation;
+            for ($i = count($relationIndexes) - 1; $i >= 0; $i--) {
+                array_splice($schema->relations, $relationIndexes[$i], 1);
+            }
+        } else {
+            $schema->classes[$class->name] = $class;
+            foreach ($relationIndexes as $i) {
+                $schema->relations[$i]->from[0] = $class->name;
+            }
         }
     }
 
