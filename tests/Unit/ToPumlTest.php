@@ -22,7 +22,7 @@ class ToPumlTest extends TestCase
         $this->artisan("make:to-puml")->expectsQuestion("What is the output filename for the PlantUML class diagram?", "nonexistentfile.puml")->assertExitCode(0);
     }
 
-    public function testGeneral()
+    public function testToPumlGeneral()
     {
         $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations")->assertExitCode(0);
     }

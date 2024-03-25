@@ -2,8 +2,11 @@
 
 namespace As283\ArtisanPlantuml\Core;
 
+use As283\PlantUmlProcessor\Model\Cardinality;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Field;
+use As283\PlantUmlProcessor\Model\Relation;
+use As283\PlantUmlProcessor\Model\RelationType;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Type;
 use Illuminate\Support\Str;
@@ -137,14 +140,343 @@ class MigrationParser
     }
 
     /**
+     * @param ClassMetadata &$class
+     * @param Schema &$schema
+     * @return void
+     */
+    private function handleDefinition(&$schema, &$class)
+    {
+        // name capitalized and singular
+        $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
+
+        if (array_key_exists($classname, $schema->classes)) {
+            $class = $schema->classes[$classname];
+        } else {
+            $class->name = $classname;
+        }
+    }
+
+    /**
+     * @param ClassMetadata &$class
+     * @return void
+     */
+    private function handleType(&$class)
+    {
+        $type = $this->parser->sigil(0);
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+        $field = new Field();
+        $field->name = $fieldname;
+        $field->type = Type::fromString($type);
+        $class->fields[] = $field;
+    }
+
+    private function handleNameless(&$class)
+    {
+        if ($this->parser->sigil(0) === "id") {
+            $field = new Field();
+            $field->name = "id";
+            $field->type = Type::int;
+            $field->primary = true;
+            $class->fields[] = $field;
+        }
+    }
+
+    private function handleTypeWithModifier(&$class)
+    {
+        $type = $this->parser->sigil(0);
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+        $modifier = $this->parser->sigil(5);
+
+        $field = new Field();
+        $field->name = $fieldname;
+        $field->type = Type::fromString($type);
+        switch ($modifier) {
+            case "unique":
+                $field->unique = true;
+                break;
+            case "nullable":
+                $field->nullable = true;
+                break;
+            case "primary":
+                $field->primary = true;
+                break;
+        }
+        $class->fields[] = $field;
+    }
+
+    private function handleTypeWithTwoModifiers(&$class)
+    {
+        $type = $this->parser->sigil(0);
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+        $modifiers = [$this->parser->sigil(5), $this->parser->sigil(9)];
+
+        $field = new Field();
+        $field->name = $fieldname;
+        $field->type = Type::fromString($type);
+        foreach ($modifiers as $modifier) {
+            switch ($modifier) {
+                case "unique":
+                    $field->unique = true;
+                    break;
+                case "nullable":
+                    $field->nullable = true;
+                    break;
+                case "primary":
+                    $field->primary = true;
+                    break;
+            }
+        }
+        $class->fields[] = $field;
+    }
+
+    private function handleModifier(&$class)
+    {
+
+        $modifier = $this->parser->sigil(0);
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+
+        $i = 0;
+        for ($i = 0; $i < count($class->fields); $i++) {
+            if ($class->fields[$i]->name === $fieldname) {
+                return;
+            }
+        }
+
+        if ($i == count($class->fields)) {
+            return;
+        }
+
+        switch ($modifier) {
+            case "unique":
+                $class->fields[$i]->unique = true;
+                break;
+            case "nullable":
+                $class->fields[$i]->nullable = true;
+                break;
+            case "primary":
+                $class->fields[$i]->primary = true;
+                break;
+        }
+    }
+
+    private function handleManyModifiers(&$class)
+    {
+        $modifier = $this->parser->sigil(0);
+        $fieldnames = array_map(
+            function ($x) {
+                return trim($x);
+            },
+            explode(",", self::removeQuotes($this->parser->sigil(2)))
+        );
+
+        $found = 0;
+        $nFields = count($fieldnames);
+        for ($i = 0; $i < count($class->fields); $i++) {
+            if ($found >= $nFields) {
+                break;
+            }
+
+            if (in_array($class->fields[$i]->name, $fieldnames)) {
+                switch ($modifier) {
+                    case "unique":
+                        $class->fields[$i]->unique = true;
+                        break;
+                    case "nullable":
+                        $class->fields[$i]->nullable = true;
+                        break;
+                    case "primary":
+                        $class->fields[$i]->primary = true;
+                        break;
+                }
+                $found++;
+                break;
+            }
+        }
+    }
+
+    private function handleForeign(&$schema, &$class, &$relationIndexes)
+    {
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+
+        // remove this field
+        $i = 0;
+        for (; $i < count($class->fields); $i++) {
+            if ($class->fields[$i]->name === $fieldname) {
+                break;
+            }
+        }
+
+        if ($i == count($class->fields)) {
+            return;
+        }
+
+        array_splice($class->fields, $i, 1);
+
+        $class_pk = explode("_", $fieldname);
+        if (count($class_pk) < 1) {
+            return;
+        }
+
+        $otherclassname = ucfirst($class_pk[0]);
+
+        $relation = new Relation();
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        // we can't know if the other must have at least one, that is defined in the program logic, not db specification
+        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    private function handleForeignId(&$schema, &$relationIndexes)
+    {
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+
+        $class_pk = explode("_", $fieldname);
+        if (count($class_pk) < 1) {
+            return;
+        }
+
+        $otherclassname = ucfirst($class_pk[0]);
+
+        $relation = new Relation();
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        // we can't know if the other must have at least one, that is defined in the program logic, not db specification
+        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    private function handleForeignMany(&$schema, &$class, &$relationIndexes)
+    {
+        $fieldnames = array_map(function ($x) {
+            return trim($x);
+        }, explode(",", self::removeQuotes($this->parser->sigil(3))));
+
+        $found = 0;
+        // remove FK fields
+        for ($i = 0; $i < count($class->fields); $i++) {
+            if ($found >= count($fieldnames)) {
+                break;
+            }
+
+            if (in_array($class->fields[$i]->name, $fieldnames)) {
+                array_splice($class->fields, $i, 1);
+                $found++;
+                // avoid problems because of the splice and i++
+                $i--;
+            }
+        }
+
+        $class_pk = explode("_", $fieldnames[0]);
+        if (count($class_pk) < 1) {
+            return;
+        }
+
+        $otherclassname = ucfirst($class_pk[0]);
+
+        $relation = new Relation();
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    private function handleForeignCustom(&$schema, &$class, &$relationIndexes)
+    {
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+
+        //remove field
+        $i = 0;
+        for (; $i < count($class->fields); $i++) {
+            if ($class->fields[$i]->name === $fieldname) {
+                break;
+            }
+        }
+
+        if ($i == count($class->fields)) {
+            return;
+        }
+
+        array_splice($class->fields, $i, 1);
+
+
+        $otherclass = "";
+        if ($this->parser->sigil(5) === "on") {
+            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(7)));
+        } else if ($this->parser->sigil(10) === "on") {
+            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(12)));
+        } else {
+            return;
+        }
+
+        $relation = new Relation();
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->to = [$otherclass, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    private function handleManyForeignCustom(&$schema, &$class, &$relationIndexes)
+    {
+        $fieldnames = array_map(function ($x) {
+            return trim($x);
+        }, explode(",", self::removeQuotes($this->parser->sigil(3))));
+
+        $found = 0;
+        for ($i = 0; $i < count($class->fields); $i++) {
+            if ($found >= count($fieldnames)) {
+                break;
+            }
+
+            if (in_array($class->fields[$i]->name, $fieldnames)) {
+                array_splice($class->fields, $i, 1);
+                $found++;
+                // avoid problems because of the splice and i++
+                $i--;
+            }
+        }
+
+        if ($i == count($class->fields)) {
+            return;
+        }
+
+        array_splice($class->fields, $i, 1);
+
+        $otherclass = "";
+        if ($this->parser->sigil(14) === "on") {
+            $otherclass = ucfirst(self::removeQuotes($this->parser->sigil(16)));
+        } else {
+            return;
+        }
+
+        $relation = new Relation();
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->to = [$otherclass, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    /**
      * @param string $in
      * @param Schema $schema
      */
     public function parse($in, &$schema)
     {
-        // Str::singular('users');
         $this->parser->consume($in, $this->lex);
         $class = new ClassMetadata();
+
+        // our class name is not known until the end, must change relations->from[0] to name of out class
+        $relationIndexes = [];
         do {
             switch ($this->parser->action) {
                 case Parser::ACTION_ERROR:
@@ -157,237 +489,52 @@ class MigrationParser
                 case Parser::ACTION_REDUCE:
                     switch ($this->parser->reduceId) {
                         case $this->DEFINITION:
-                            // name capitalized and singular
-                            $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
-                            if (array_key_exists($classname, $schema->classes)) {
-                                $class = $schema->classes[$classname];
-                            } else {
-                                $class->name = $classname;
-                            }
+                            $this->handleDefinition($schema, $class);
                             break;
                         case $this->TYPE:
-                            $type = $this->parser->sigil(0);
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-                            $field = new Field();
-                            $field->name = $fieldname;
-                            $field->type = Type::fromString($type);
-                            $class->fields[] = $field;
+                            $this->handleType($class);
                             break;
                         case $this->NAMELESS_TYPE:
-                            if ($this->parser->sigil(0) === "id") {
-                                $field = new Field();
-                                $field->name = "id";
-                                $field->type = Type::int;
-                                $field->primary = true;
-                                $class->fields[] = $field;
-                            }
+                            $this->handleNameless($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER:
-                            $type = $this->parser->sigil(0);
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-                            $modifier = $this->parser->sigil(5);
-
-                            $field = new Field();
-                            $field->name = $fieldname;
-                            $field->type = Type::fromString($type);
-                            switch ($modifier) {
-                                case "unique":
-                                    $field->unique = true;
-                                    break;
-                                case "nullable":
-                                    $field->nullable = true;
-                                    break;
-                                case "primary":
-                                    $field->primary = true;
-                                    break;
-                            }
+                            $this->handleTypeWithModifier($class);
                             break;
                         case $this->TYPE_WITH_TWO_MODIFIER:
-                            $type = $this->parser->sigil(0);
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-                            $modifiers = [$this->parser->sigil(5), $this->parser->sigil(9)];
-
-                            $field = new Field();
-                            $field->name = $fieldname;
-                            $field->type = Type::fromString($type);
-                            foreach ($modifiers as $modifier) {
-                                switch ($modifier) {
-                                    case "unique":
-                                        $field->unique = true;
-                                        break;
-                                    case "nullable":
-                                        $field->nullable = true;
-                                        break;
-                                    case "primary":
-                                        $field->primary = true;
-                                        break;
-                                }
-                            }
+                            $this->handleTypeWithTwoModifiers($class);
                             break;
                         case $this->MODIFIER:
-                            $modifier = $this->parser->sigil(0);
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-
-                            $i = 0;
-                            for ($i = 0; $i < count($class->fields); $i++) {
-                                if ($class->fields[$i]->name === $fieldname) {
-                                    break;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            switch ($modifier) {
-                                case "unique":
-                                    $class->fields[$i]->unique = true;
-                                    break;
-                                case "nullable":
-                                    $class->fields[$i]->nullable = true;
-                                    break;
-                                case "primary":
-                                    $class->fields[$i]->primary = true;
-                                    break;
-                            }
+                            $this->handleModifier($class);
                             break;
                         case $this->MODIFIER_MANY:
-                            $modifier = $this->parser->sigil(0);
-                            $fieldnames = array_map(
-                                function ($x) {
-                                    return trim($x);
-                                },
-                                explode(",", self::removeQuotes($this->parser->sigil(2)))
-                            );
-
-                            $found = 0;
-                            $nFields = count($fieldnames);
-                            for ($i = 0; $i < count($class->fields); $i++) {
-                                if ($found >= $nFields) {
-                                    break;
-                                }
-
-                                if (in_array($class->fields[$i]->name, $fieldnames)) {
-                                    switch ($modifier) {
-                                        case "unique":
-                                            $class->fields[$i]->unique = true;
-                                            break;
-                                        case "nullable":
-                                            $class->fields[$i]->nullable = true;
-                                            break;
-                                        case "primary":
-                                            $class->fields[$i]->primary = true;
-                                            break;
-                                    }
-                                    $found++;
-                                    break;
-                                }
-                            }
+                            $this->handleManyModifiers($class);
                             break;
                         case $this->FOREIGN:
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-
-                            $i = 0;
-                            for (; $i < count($class->fields); $i++) {
-                                if ($class->fields[$i]->name === $fieldname) {
-                                    break;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            array_splice($class->fields, $i, 1);
+                            $this->handleForeign($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_ID:
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-
-                            $i = 0;
-                            for (; $i < count($class->fields); $i++) {
-                                if ($class->fields[$i]->name === $fieldname) {
-                                    break;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            array_splice($class->fields, $i, 1);
+                            $this->handleForeignId($schema, $relationIndexes);
                             break;
                         case $this->FOREIGN_MANY:
-                            $fieldnames = array_map(function ($x) {
-                                return trim($x);
-                            }, explode(",", self::removeQuotes($this->parser->sigil(3))));
-
-                            $found = 0;
-                            for ($i = 0; $i < count($class->fields); $i++) {
-                                if ($found >= count($fieldnames)) {
-                                    break;
-                                }
-
-                                if (in_array($class->fields[$i]->name, $fieldnames)) {
-                                    array_splice($class->fields, $i, 1);
-                                    $found++;
-                                    // avoid problems because of the splice and i++
-                                    $i--;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            array_splice($class->fields, $i, 1);
+                            $this->handleForeignMany($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM:
-                            $fieldname = self::removeQuotes($this->parser->sigil(2));
-
-                            $i = 0;
-                            for (; $i < count($class->fields); $i++) {
-                                if ($class->fields[$i]->name === $fieldname) {
-                                    break;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            array_splice($class->fields, $i, 1);
+                            $this->handleForeignCustom($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM_MANY:
-                            $fieldnames = array_map(function ($x) {
-                                return trim($x);
-                            }, explode(",", self::removeQuotes($this->parser->sigil(3))));
-
-                            $found = 0;
-                            for ($i = 0; $i < count($class->fields); $i++) {
-                                if ($found >= count($fieldnames)) {
-                                    break;
-                                }
-
-                                if (in_array($class->fields[$i]->name, $fieldnames)) {
-                                    array_splice($class->fields, $i, 1);
-                                    $found++;
-                                    // avoid problems because of the splice and i++
-                                    $i--;
-                                }
-                            }
-
-                            if ($i == count($class->fields)) {
-                                break;
-                            }
-
-                            array_splice($class->fields, $i, 1);
+                            $this->handleManyForeignCustom($schema, $class, $relationIndexes);
                             break;
                     }
                     break;
             }
             $this->parser->advance();
         } while (Parser::ACTION_ACCEPT != $this->parser->action);
+
         $schema->classes[$class->name] = $class;
+
+        foreach ($relationIndexes as $i) {
+            $schema->relations[$i]->from[0] = $class->name;
+        }
     }
 
     private static function removeQuotes($str)
