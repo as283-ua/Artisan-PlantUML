@@ -62,11 +62,10 @@ class SchemaUtil
 
 
     /**
-     * @param Schema &$schema
-     * @return array[string]
-     * @throws CycleException
+     * @param Schema $schema
+     * @return array Element at index 0 is an array<string> with the class names in order. Element at index 1 is an array<Relation> with the relations that were removed and their value.
      */
-    public static function orderClasses(&$schema)
+    public static function orderClasses($schema)
     {
         $classMap = self::initClassMap($schema);
 
@@ -76,7 +75,7 @@ class SchemaUtil
         $orderedClasses = [];
 
         /**
-         * @var array[int]
+         * @var array<Relation>
          */
         $conflictingRelations = [];
 
@@ -92,7 +91,7 @@ class SchemaUtil
                     foreach ($state["relations"] as $relation) {
                         if (!$relation["resolved"]) {
                             if (($key = array_search($relation, $state["relations"])) !== false) {
-                                $conflictingRelations[] = $relation["index"];
+                                $conflictingRelations[] = $schema->relations[$relation["index"]];
                                 unset($schema->relations[$relation["index"]]);
                                 unset($classMap[$class]["relations"][$key]);
 
@@ -178,7 +177,7 @@ class SchemaUtil
             $unorderedCount = count($classMap);
         }
 
-        return $orderedClasses;
+        return [$orderedClasses, $conflictingRelations];
     }
 
 

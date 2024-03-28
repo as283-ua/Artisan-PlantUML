@@ -9,6 +9,7 @@ use As283\PlantUmlProcessor\Model\Field;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Type;
 use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Relation;
 use Illuminate\Console\Command;
 
 class MigrationWriter
@@ -30,6 +31,15 @@ class MigrationWriter
 
         $indexStr = $index === null ? "" : "_" . $index;
         return date("Y_m_d_His") . $indexStr . "_create_" . $table . "_table.php";
+    }
+
+    /**
+     * @param string $tableName
+     * @param Relation $relation
+     */
+    private static function fileNameFKs($tableName, $relatedClass)
+    {
+        return date("Y_m_d_His") . "_add_" . $relatedClass . "_foreign_key_to_" . $tableName . "_table.php";
     }
 
     /**
@@ -347,7 +357,6 @@ class MigrationWriter
      */
     public static function writeJunctionTable($class1, $class2, &$schema, $relationIndex, $command)
     {
-        // https://chat.openai.com/c/7f00fcad-0e08-4b5c-940b-e38ce8845ca8
         $path = $command->option("path-migrations"); // Remove trailing slash
 
         if ($path[-1] == "/") {
@@ -366,5 +375,36 @@ class MigrationWriter
         self::writeDown($migration, self::junctionTableName([$class1, $class2]));
 
         fclose($migration);
+    }
+
+    /**
+     * @param Relation $relation
+     * @param Schema $schema
+     * @param Command $command
+     */
+    public static function writeMissingRelation($relation, $schema, $command)
+    {
+        if ($relation->from[1] === Cardinality::One || $relation->from[1] === Cardinality::ZeroOrOne) {
+            $tableName = Pluralizer::plural(strtolower($relation->from[0]));
+            $relatedClass = Pluralizer::plural(strtolower($relation->to[0]));
+        } else {
+            $tableName = Pluralizer::plural(strtolower($relation->to[0]));
+            $relatedClass = Pluralizer::plural(strtolower($relation->from[0]));
+        }
+
+
+        $path = $command->option("path-migrations");
+
+        if ($path[-1] == "/") {
+            $path = substr($path, 0, -1);
+        }
+
+        $migrationFile = $path . "/" . self::fileNameFKs($tableName, $relatedClass);
+
+        $migration = fopen($migrationFile, "w");
+
+        self::writeUseStatements($migration);
+        // self::writeUpFks($migration, $schema, $tableName, $relation);
+        self::writeDown($migration, $tableName);
     }
 }
