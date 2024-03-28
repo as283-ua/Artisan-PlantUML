@@ -1,0 +1,29 @@
+@startuml
+class Foo {
+    foo
+}
+
+class Bar {
+    bar
+}
+
+class Qux {
+    qux
+}
+
+class Cool {
+    c
+}
+
+class Bool {
+    b
+}
+
+Foo "*" - "1" Bar
+Bar "*" - "1" Qux
+Qux "*" - "1" Foo
+
+Cool "1" - "1" Bool
+
+Cool "1" - "*" Qux
+@enduml

@@ -22,7 +22,7 @@ class MigrationWriter
     private static function fileName($className, $index = null)
     {
         $table = "";
-        if(is_array($className)){
+        if (is_array($className)) {
             $table = self::junctionTableName($className);
         } else {
             $table = Pluralizer::plural(strtolower($className));
@@ -37,7 +37,8 @@ class MigrationWriter
      * @param array $classes
      * @return string
      */
-    private static function junctionTableName($classes){
+    private static function junctionTableName($classes)
+    {
         sort($classes);
         foreach ($classes as &$name) {
             $name = strtolower($name);
@@ -70,19 +71,20 @@ class MigrationWriter
      * @param ClassMetadata $class
      * @param Command &$command
      */
-    private static function writeFields($file, &$class, &$command){
+    private static function writeFields($file, &$class, &$command)
+    {
         foreach ($class->fields as $field) {
-            if($field->name == "id"){
+            if ($field->name == "id") {
                 continue;
             }
 
-            if($field->type == null){
+            if ($field->type == null) {
                 $command->warn("Field " . $field->name . " has no type. Skipping.");
                 continue;
             }
 
             $type = SchemaUtil::fieldTypeToLaravelType($field->type);
-            if($type == null){
+            if ($type == null) {
                 $command->warn("Field " . $field->name . " has an unsupported type. Skipping.");
                 continue;
             }
@@ -104,22 +106,23 @@ class MigrationWriter
      * @param array<string,Type> $classPKs
      * @param bool $usesId
      */
-    private static function writePKs($file, $classPKs){
+    private static function writePKs($file, $classPKs)
+    {
         $usesId = isset($classPKs["id"]);
-        if($usesId){
+        if ($usesId) {
             fwrite($file, "            \$table->id();\n");
             return;
         }
 
-        if(count($classPKs) > 1){
+        if (count($classPKs) > 1) {
             fwrite($file, "            \$table->primary([");
-            foreach($classPKs as $pk => $ignore){
+            foreach ($classPKs as $pk => $ignore) {
                 fwrite($file, "'" . $pk . "', ");
             }
             fwrite($file, "]);\n");
-        } else if(count($classPKs) == 1 && !$usesId){
+        } else if (count($classPKs) == 1 && !$usesId) {
             $classKeys = array_keys($classPKs);
-            
+
             fwrite($file, "            \$table->primary('" . $classKeys[0] . "');\n");
         }
     }
@@ -131,37 +134,41 @@ class MigrationWriter
      * @param Schema &$schema
      * @param Command &$command
      */
-    private static function writeFKs($file, &$class, &$schema, &$command){
+    private static function writeFKs($file, &$class, &$schema, &$command)
+    {
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
             $tableName = Pluralizer::plural(strtolower($relatedClassName));
             $j = 1;
-            if(count($indexes) == 1){
+            if (count($indexes) == 1) {
                 $j = null;
             }
-            foreach($indexes as $index){
+            foreach ($indexes as $index) {
+                if (array_key_exists($index, $schema->relations) === false) {
+                    continue;
+                }
                 $relation = $schema->relations[$index];
 
                 $cardinality = SchemaUtil::getCardinality($class->name, $relation);
 
                 // Cardinality of many goes in another table, skip here
-                if($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne){
+                if ($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne) {
                     continue;
                 }
 
                 $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
 
-                if($class->name !== $relatedClassName){
+                if ($class->name !== $relatedClassName) {
                     // Fk goes in more restrictive table
-                    if($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One){
+                    if ($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One) {
                         continue;
                     }
-    
+
                     // Fk goes in table who is alphabetically first
-                    if($cardinality === $otherCardinality && $relatedClassName < $class->name){
+                    if ($cardinality === $otherCardinality && $relatedClassName < $class->name) {
                         continue;
                     }
                 } else {
-                    if($otherCardinality == Cardinality::One){
+                    if ($otherCardinality == Cardinality::One) {
                         $cardinality = Cardinality::One;
                     }
                 }
@@ -173,10 +180,10 @@ class MigrationWriter
                 $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
                 $nullable = $cardinality == Cardinality::ZeroOrOne;
 
-                if($otherUsesId){
+                if ($otherUsesId) {
                     $unique = $unique ? "->unique()" : "";
                     $nullable = $nullable ? "->nullable()" : "";
-                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')" . $unique . $nullable ."->constrained();\n");
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')" . $unique . $nullable . "->constrained();\n");
                 } else {
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
@@ -185,20 +192,20 @@ class MigrationWriter
                         fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "')" . $nullable . ";\n");
                         $fks[] = $columnName;
                     }
-                    
-                    if($unique){
+
+                    if ($unique) {
                         $unique = $unique ? "->unique(['" . implode("', '", $fks) . "'])" : "";
                         fwrite($file, "            \$table" . $unique . ";\n");
                     }
                     fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassPKs)) . "'])->on('" . $tableName . "');\n");
                 }
 
-                if(!isset($j)){
+                if (!isset($j)) {
                     break;
                 }
-                
+
                 // don't write the same fk twice
-                if($class->name === $relatedClassName){
+                if ($class->name === $relatedClassName) {
                     break;
                 }
 
@@ -215,14 +222,15 @@ class MigrationWriter
      * @param Schema &$schema
      * @param Command &$command
      */
-    private static function writeFKsJunction($file, $class, &$schema, &$command){
+    private static function writeFKsJunction($file, $class, &$schema, &$command)
+    {
         $tableName = Pluralizer::plural(strtolower($class));
 
         $otherClass = $schema->classes[$class];
         $otherClassPKs = SchemaUtil::classKeys($otherClass, $command->option("use-composite-keys"));
         $otherUsesId = isset($otherClassPKs["id"]);
 
-        if($otherUsesId){
+        if ($otherUsesId) {
             fwrite($file, "            \$table->foreignId('" . strtolower($class) . "_id')->constrained();\n");
         } else {
             $fks = [];
@@ -248,16 +256,16 @@ class MigrationWriter
     private static function writeUp($file, $class, &$schema, &$command, $usesTimeStamps = true)
     {
         fwrite($file, "        Schema::create('" . Pluralizer::plural(strtolower($class->name)) . "', function (Blueprint \$table) {\n");
-        
+
         $classPKs = SchemaUtil::classKeys($class, $command->option("use-composite-keys"));
-        
+
         self::writePKs($file, $classPKs);
 
         self::writeFields($file, $class, $command);
 
         self::writeFKs($file, $class, $schema, $command);
 
-        if($usesTimeStamps){
+        if ($usesTimeStamps) {
             fwrite($file, "            \$table->timestamps();\n");
         }
 
@@ -271,7 +279,8 @@ class MigrationWriter
      * @param resource $file
      * @return void
      */
-    private static function writeDown($file, $tableName){
+    private static function writeDown($file, $tableName)
+    {
         fwrite($file, "    public function down(): void\n");
         fwrite($file, "    {\n");
         fwrite($file, "        Schema::dropIfExists('" . $tableName . "');\n");
@@ -286,7 +295,8 @@ class MigrationWriter
      * @param Schema &$schema
      * @param Command &$command 
      */
-    private static function writeJunctionUp($file, $class1, $class2, &$schema, &$command){
+    private static function writeJunctionUp($file, $class1, $class2, &$schema, &$command)
+    {
         fwrite($file, "        Schema::create('" . self::junctionTableName([$class1->name, $class2->name]) . "', function (Blueprint \$table) {\n");
 
         fwrite($file, "            \$table->id();\n");
@@ -307,11 +317,12 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function write($className, &$schema, $index, $command){
+    public static function write($className, &$schema, $index, $command)
+    {
         $path = $command->option("path-migrations");
 
         // Remove trailing slash
-        if($path[-1] == "/"){
+        if ($path[-1] == "/") {
             $path = substr($path, 0, -1);
         }
         $class = $schema->classes[$className];
@@ -334,11 +345,12 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function writeJunctionTable($class1, $class2, &$schema, $relationIndex, $command){
+    public static function writeJunctionTable($class1, $class2, &$schema, $relationIndex, $command)
+    {
         // https://chat.openai.com/c/7f00fcad-0e08-4b5c-940b-e38ce8845ca8
-        $path = $command->option("path-migrations");// Remove trailing slash
+        $path = $command->option("path-migrations"); // Remove trailing slash
 
-        if($path[-1] == "/"){
+        if ($path[-1] == "/") {
             $path = substr($path, 0, -1);
         }
 

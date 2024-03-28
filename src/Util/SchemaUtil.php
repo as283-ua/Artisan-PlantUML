@@ -75,16 +75,37 @@ class SchemaUtil
          */
         $orderedClasses = [];
 
+        /**
+         * @var array[int]
+         */
+        $conflictingRelations = [];
+
         $resolvedAll = false;
 
         $unorderedCount = count($classMap);
         $oldUnorderedCount = -1;
 
         while (!$resolvedAll) {
-            // failsafe
+            // cycle detected
             if ($oldUnorderedCount === $unorderedCount) {
-                print_r($classMap);
-                throw new CycleException(array_keys($classMap));
+                foreach ($classMap as $class => $state) {
+                    foreach ($state["relations"] as $relation) {
+                        if (!$relation["resolved"]) {
+                            if (($key = array_search($relation, $state["relations"])) !== false) {
+                                $conflictingRelations[] = $relation["index"];
+                                unset($schema->relations[$relation["index"]]);
+                                unset($classMap[$class]["relations"][$key]);
+
+                                // echo "Schema\n";
+                                // print_r($schema);
+                                // echo "\nClass map\n";
+                                // print_r($classMap);
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
             }
 
             // will run through all classes and do && of $resolved with $class->resolved
@@ -93,8 +114,13 @@ class SchemaUtil
 
                 // check if class is resolved or resolvable
                 $resolvable = true;
-                foreach ($state["relations"] as &$relation) {
+                foreach ($state["relations"] as $i => &$relation) {
                     if ($relation["resolved"]) {
+                        continue;
+                    }
+
+                    if (array_key_exists($relation["index"], $schema->relations) === false) {
+                        unset($state["relations"][$i]);
                         continue;
                     }
 
