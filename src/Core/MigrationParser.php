@@ -40,6 +40,8 @@ class MigrationParser
 
     private int $FOREIGN;
     private int $FOREIGN_ID;
+    private int $FOREIGN_ID_MODIFIER;
+    private int $FOREIGN_ID_TWO_MODIFIERS;
     private int $FOREIGN_MANY;
     private int $FOREIGN_CUSTOM;
     private int $FOREIGN_CUSTOM_MANY;
@@ -104,6 +106,8 @@ class MigrationParser
         $this->FOREIGN_MANY = $this->parser->push("SPECS", "FOREIGN '(' '[' TEXTS ']' ')'");
         $this->FOREIGN = $this->parser->push("SPECS", "FOREIGN '(' TEXT ')'");
         $this->FOREIGN_ID = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')'");
+        $this->FOREIGN_ID_MODIFIER = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')'");
+        $this->FOREIGN_ID_TWO_MODIFIERS = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')' '->' MODIFIER '(' ')'");
 
         $this->parser->build();
 
@@ -408,6 +412,81 @@ class MigrationParser
 
     /**
      * @param Schema &$schema
+     * @param int[] &$relationIndexes
+     * @return void
+     */
+    private function handleForeignIdMod(&$schema, &$relationIndexes)
+    {
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+        $mod = $this->parser->sigil(5);
+
+        $class_pk = explode("_", $fieldname);
+        if (count($class_pk) < 1) {
+            return;
+        }
+
+        $otherclassname = Str::singular(ucfirst($class_pk[0]));
+
+        $relation = new Relation();
+        if ($mod === "nullable") {
+            $relation->from = ["", Cardinality::ZeroOrOne];
+        } else {
+            $relation->from = ["", Cardinality::One];
+        }
+
+        if ($mod === "unique") {
+            $relation->to = [$otherclassname, Cardinality::ZeroOrOne];
+        } else {
+            $relation->to = [$otherclassname, Cardinality::Any];
+        }
+
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    /**
+     * @param Schema &$schema
+     * @param int[] &$relationIndexes
+     * @return void
+     */
+    private function handleForeignIdTwoMod(&$schema, &$relationIndexes)
+    {
+        $fieldname = self::removeQuotes($this->parser->sigil(2));
+        $mod1 = $this->parser->sigil(5);
+        $mod2 = $this->parser->sigil(9);
+
+        $class_pk = explode("_", $fieldname);
+        if (count($class_pk) < 1) {
+            return;
+        }
+
+        $otherclassname = Str::singular(ucfirst($class_pk[0]));
+
+        $relation = new Relation();
+        if ($mod1 === "nullable" || $mod2 === "nullable") {
+            $relation->from = ["", Cardinality::ZeroOrOne];
+        } else {
+            $relation->from = ["", Cardinality::One];
+        }
+
+        if ($mod1 === "unique" || $mod2 === "unique") {
+            $relation->to = [$otherclassname, Cardinality::ZeroOrOne];
+        } else {
+            $relation->to = [$otherclassname, Cardinality::Any];
+        }
+        $relation->from = ["", Cardinality::ZeroOrOne];
+        // we can't know if the other must have at least one, that is defined in the program logic, not db specification
+        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->type = RelationType::Association;
+
+        $schema->relations[] = $relation;
+        $relationIndexes[] = count($schema->relations) - 1;
+    }
+
+    /**
+     * @param Schema &$schema
      * @param ClassMetadata &$class
      * @param int[] &$relationIndexes
      * @return void
@@ -655,6 +734,12 @@ class MigrationParser
                             // echo "FOREIGN_ID\n";
                             $this->handleForeignId($schema, $relationIndexes);
                             break;
+                        case $this->FOREIGN_ID_MODIFIER:
+                            $this->handleForeignIdMod($schema, $relationIndexes);
+                            break;
+                        case $this->FOREIGN_ID_TWO_MODIFIERS:
+                            $this->handleForeignIdTwoMod($schema, $relationIndexes);
+                            break;
                         case $this->FOREIGN_MANY:
                             // echo "FOREIGN_MANY\n";
                             $this->handleForeignMany($schema, $class, $relationIndexes);
@@ -673,18 +758,17 @@ class MigrationParser
             $this->parser->advance();
         } while (Parser::ACTION_ACCEPT != $this->parser->action);
 
-        // table is junction table for many to many
-        if ((count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
-            $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
+        // table might be junction table for many to many
+        $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
+        if ((count($classes) == 2) && (count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
+            // echo $relationIndexes;
+
             $relation = new Relation();
             $relation->from = [$classes[0], Cardinality::Any];
             $relation->to = [$classes[1], Cardinality::Any];
             $relation->type = RelationType::Association;
 
             $schema->relations[] = $relation;
-            for ($i = count($relationIndexes) - 1; $i >= 0; $i--) {
-                array_splice($schema->relations, $relationIndexes[$i], 1);
-            }
 
             return;
         }
@@ -710,6 +794,7 @@ class MigrationParser
             }
         }
 
+        // table name only know at the end
         $schema->classes[$class->name] = $class;
         foreach ($relationIndexes as $i) {
             $schema->relations[$i]->from[0] = $class->name;
