@@ -75,7 +75,6 @@ class FromPUML extends Command implements PromptsForMissingInput
         $this->info("Generating models and migrations:");
         try {
             $res = SchemaUtil::orderClasses($schema);
-            print_r($schema->relations);
             $classNamesOrdered = $res[0];
             $missingRelations = $res[1];
         } catch (CycleException $e) {

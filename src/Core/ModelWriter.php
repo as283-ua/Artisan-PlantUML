@@ -32,7 +32,7 @@ class ModelWriter
         fwrite($file, "<?php\n\n");
         fwrite($file, "namespace App\Models;\n");
         fwrite($file, "use Illuminate\Database\Eloquent\Model;\n\n");
-        fwrite($file, "class " .  $modelName. " extends Model\n");
+        fwrite($file, "class " .  $modelName . " extends Model\n");
         fwrite($file, "{\n");
     }
 
@@ -44,36 +44,45 @@ class ModelWriter
      * @param string $className2
      * @return string
      */
-    private static function getEloquentCardinality($cardinality1, $cardinality2, $className1, $className2){
-        if(in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne]) 
-            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])){
+    private static function getEloquentCardinality($cardinality1, $cardinality2, $className1, $className2)
+    {
+        if (
+            in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne])
+            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])
+        ) {
             return "belongsToMany";
         }
 
-        if(in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne]) 
-            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])){
+        if (
+            in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne])
+            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])
+        ) {
             return "hasMany";
         }
 
-        if(in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne]) 
-            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])){
+        if (
+            in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne])
+            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])
+        ) {
             return "belongsTo";
         }
 
-        if(in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne]) 
-            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])){
+        if (
+            in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne])
+            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])
+        ) {
             // FK is in the class alphabetically first
-            if($className1 < $className2){
+            if ($className1 < $className2) {
                 return "belongsTo";
             } else {
                 return "hasOne";
             }
         }
-        echo "\n1. ";
-        print_r($cardinality1);
+        // echo "\n1. ";
+        // print_r($cardinality1);
 
-        echo "\n2. ";
-        print_r($cardinality2);
+        // echo "\n2. ";
+        // print_r($cardinality2);
     }
 
     /**
@@ -91,7 +100,7 @@ class ModelWriter
         $keys = array_keyS($keysTypes);
 
         // Set primary key if not id
-        if($keys[0] != "id"){
+        if ($keys[0] != "id") {
             fwrite($file, "    protected \$primaryKey = '" . $keys[0] . "';\n");
             fwrite($file, "    protected \$keyType = '" . SchemaUtil::fieldTypeToLaravelType($keysTypes[$keys[0]]) . "';\n\n");
         }
@@ -99,23 +108,23 @@ class ModelWriter
         foreach ($class->relatedClasses as $relatedClassName => $indexes) {
             $i = count($indexes) > 1 ? 1 : null;
 
-            foreach($indexes as $index){
+            foreach ($indexes as $index) {
                 $relation = $schema->relations[$index];
                 $relatedClass = $schema->classes[$relatedClassName];
                 $relatedKeys = array_keys(SchemaUtil::classKeys($relatedClass));
-    
+
                 $cardinality = SchemaUtil::getCardinality($className, $relation);
                 $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
-                
+
                 $eloquentCardinality = self::getEloquentCardinality($cardinality, $otherCardinality, $className, $relatedClassName);
-                
-                if($eloquentCardinality !== "belongsToMany"){
+
+                if ($eloquentCardinality !== "belongsToMany") {
                     $modelContainsFK = $eloquentCardinality === "belongsTo";
                     $foreignKey = $modelContainsFK ? strtolower($relatedClassName) . "_" . $relatedKeys[0] : strtolower($className) . "_" . $keys[0];
                     $primaryKey = $modelContainsFK ? $relatedKeys[0] : $keys[0];
                     $methodName = in_array($eloquentCardinality, ["hasMany", "belongsToMany"]) ? Pluralizer::plural(strtolower($relatedClass->name)) : strtolower($relatedClass->name);
                     $methodName = $methodName . $i;
-                    if($relatedKeys[0] != "id" || count($indexes) > 1){
+                    if ($relatedKeys[0] != "id" || count($indexes) > 1) {
                         fwrite($file, "    public function " . $methodName . "()\n");
                         fwrite($file, "    {\n");
                         fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class, '" . $foreignKey . $i . "', '" . $primaryKey . "');\n");
@@ -135,7 +144,7 @@ class ModelWriter
                     fwrite($file, "    }\n\n");
                 }
 
-                if($i !== null){
+                if ($i !== null) {
                     $i++;
                 }
             }
@@ -156,7 +165,7 @@ class ModelWriter
         $path = $command->option('path-models');
 
         // Remove trailing slash
-        if($path[-1] == "/"){
+        if ($path[-1] == "/") {
             $path = substr($path, 0, -1);
         }
 

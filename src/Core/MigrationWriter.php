@@ -37,9 +37,9 @@ class MigrationWriter
      * @param string $tableName
      * @param Relation $relation
      */
-    private static function fileNameFKs($tableName, $relatedClass)
+    private static function fileNameFKs($tableName, $relatedTable)
     {
-        return date("Y_m_d_His") . "_add_" . $relatedClass . "_foreign_key_to_" . $tableName . "_table.php";
+        return date("Y_m_d_His") . "_add_" . $relatedTable . "_foreign_key_to_" . $tableName . "_table.php";
     }
 
     /**
@@ -284,6 +284,30 @@ class MigrationWriter
     }
 
     /**
+     * @param resource $file
+     * @param string $table
+     * @param string $otherTable
+     * @param array<string,Type> $otherClassKeys
+     */
+    private static function writeUpFks($file, $table, $otherTable, $otherClassKeys)
+    {
+        fwrite($file, "        Schema::table('" . $table . "', function (Blueprint \$table) {\n");
+
+        foreach ($otherClassKeys as $key => $type) {
+            fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $otherTable . "_" . $key . "');\n");
+        }
+
+        if (count($otherClassKeys) > 1) {
+            fwrite($file, "            \$table->foreign(['{$otherTable}_" . implode("', '{$otherTable}_", array_keys($otherClassKeys)) . "'])->references(['" . implode("', '", array_keys($otherClassKeys)) . "'])->on('" . $otherTable . "');\n");
+        } else {
+            fwrite($file, "            \$table->foreign('{$otherTable}_" . array_keys($otherClassKeys)[0] . "')->references('" . array_keys($otherClassKeys)[0] . "')->on('" . $otherTable . "');\n");
+        }
+
+        fwrite($file, "        });\n");
+        fwrite($file, "    }");
+    }
+
+    /**
      * Generate the down method for the migration
      * @param string $tableName
      * @param resource $file
@@ -294,6 +318,34 @@ class MigrationWriter
         fwrite($file, "    public function down(): void\n");
         fwrite($file, "    {\n");
         fwrite($file, "        Schema::dropIfExists('" . $tableName . "');\n");
+        fwrite($file, "    }\n");
+        fwrite($file, "};");
+    }
+
+    /**
+     * @param resource $file
+     * @param string $tableName
+     * @param string|string[] $columns
+     */
+    private static function writeDownFkColumn($file, $tableName, $otherTable, $columns)
+    {
+        if (is_array($columns) && count($columns) == 1) {
+            $columns = $columns[0];
+        }
+
+        fwrite($file, "    public function down(): void\n");
+        fwrite($file, "    {\n");
+        fwrite($file, "        Schema::table('" . $tableName . "', function (Blueprint \$table) {\n");
+        if (is_array($columns)) {
+            fwrite($file, "            \$table->dropForeign(['{$otherTable}_" . implode("', '{$otherTable}_", $columns) . "']);\n");
+            foreach ($columns as $columnName) {
+                fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columnName . "');\n");
+            }
+        } else {
+            fwrite($file, "            \$table->dropForeign('{$otherTable}_" . $columns . "');\n");
+            fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columns . "');\n");
+        }
+        fwrite($file, "        });\n");
         fwrite($file, "    }\n");
         fwrite($file, "};");
     }
@@ -385,13 +437,15 @@ class MigrationWriter
     public static function writeMissingRelation($relation, $schema, $command)
     {
         if ($relation->from[1] === Cardinality::One || $relation->from[1] === Cardinality::ZeroOrOne) {
-            $tableName = Pluralizer::plural(strtolower($relation->from[0]));
-            $relatedClass = Pluralizer::plural(strtolower($relation->to[0]));
+            $className = $relation->from[0];
+            $otherClassName = $relation->to[0];
         } else {
-            $tableName = Pluralizer::plural(strtolower($relation->to[0]));
-            $relatedClass = Pluralizer::plural(strtolower($relation->from[0]));
+            $className = $relation->to[0];
+            $otherClassName = $relation->from[0];
         }
 
+        $tableName = Pluralizer::plural(strtolower($className));
+        $relatedTable = Pluralizer::plural(strtolower($otherClassName));
 
         $path = $command->option("path-migrations");
 
@@ -399,12 +453,17 @@ class MigrationWriter
             $path = substr($path, 0, -1);
         }
 
-        $migrationFile = $path . "/" . self::fileNameFKs($tableName, $relatedClass);
+        $migrationFile = $path . "/" . self::fileNameFKs($tableName, $relatedTable);
 
         $migration = fopen($migrationFile, "w");
 
+        $otherClassKeys = SchemaUtil::classKeys($schema->classes[$otherClassName], $command->option("use-composite-keys"));
+
         self::writeUseStatements($migration);
-        // self::writeUpFks($migration, $schema, $tableName, $relation);
-        self::writeDown($migration, $tableName);
+        self::writeUpFks($migration, $tableName, $relatedTable, $otherClassKeys);
+
+        $fieldNames = array_keys($otherClassKeys);
+
+        self::writeDownFkColumn($migration, $tableName, $relatedTable, $fieldNames);
     }
 }

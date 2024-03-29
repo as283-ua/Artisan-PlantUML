@@ -704,9 +704,9 @@ class MigrationParser
             }
 
             foreach ($modifiers as $modifier) {
-                $class->fields[$i]->unique = $modifier->unique;
-                $class->fields[$i]->nullable = $modifier->nullable;
-                $class->fields[$i]->primary = $modifier->primary;
+                $class->fields[$i]->unique |= $modifier->unique;
+                $class->fields[$i]->nullable |= $modifier->nullable;
+                $class->fields[$i]->primary |= $modifier->primary;
             }
         }
 
