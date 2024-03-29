@@ -178,6 +178,7 @@ class MigrationWriter
                         continue;
                     }
                 } else {
+                    // set relation to the most restrictive one
                     if ($otherCardinality == Cardinality::One) {
                         $cardinality = Cardinality::One;
                     }

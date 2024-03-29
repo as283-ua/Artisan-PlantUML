@@ -334,7 +334,7 @@ class MigrationParser
     /**
      * @param Schema &$schema
      * @param ClassMetadata &$class
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeign(&$schema, &$class, &$relationIndexes)
@@ -381,12 +381,12 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldCopy->name] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeignId(&$schema, &$relationIndexes)
@@ -407,12 +407,12 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldname] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeignIdMod(&$schema, &$relationIndexes)
@@ -443,12 +443,12 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldname] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeignIdTwoMod(&$schema, &$relationIndexes)
@@ -482,13 +482,13 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldname] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
      * @param ClassMetadata &$class
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeignMany(&$schema, &$class, &$relationIndexes)
@@ -537,13 +537,13 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldnames[0]] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
      * @param ClassMetadata &$class
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleForeignCustom(&$schema, &$class, &$relationIndexes)
@@ -591,13 +591,13 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldname] = count($schema->relations) - 1;
     }
 
     /**
      * @param Schema &$schema
      * @param ClassMetadata &$class
-     * @param int[] &$relationIndexes
+     * @param array<string,int> &$relationIndexes
      * @return void
      */
     private function handleManyForeignCustom(&$schema, &$class, &$relationIndexes)
@@ -645,7 +645,7 @@ class MigrationParser
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
-        $relationIndexes[] = count($schema->relations) - 1;
+        $relationIndexes[$fieldnames[0]] = count($schema->relations) - 1;
     }
 
     /**
@@ -658,6 +658,9 @@ class MigrationParser
         $class = new ClassMetadata();
 
         // our class name is not known until the end, must change relations->from[0] to name of out class
+        /**
+         * @var array<string,int> key is name of fk field in table, value is index in $schema->relations
+         */
         $relationIndexes = [];
 
         // in case a modifier appears before the actual field is declared
@@ -688,6 +691,10 @@ class MigrationParser
                             // echo "NAMELESS_TYPE\n";
                             $this->handleNameless($class);
                             break;
+                        case $this->TYPE_EXTRA_ARGS:
+                            // echo "TYPE\n";
+                            $this->handleType($class);
+                            break;
                         case $this->TYPE_WITH_MODIFIER:
                             // echo "TYPE_WITH_MODIFIER\n";
                             $this->handleTypeWithModifier($class);
@@ -695,10 +702,6 @@ class MigrationParser
                         case $this->TYPE_WITH_TWO_MODIFIER:
                             // echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class);
-                            break;
-                        case $this->TYPE_EXTRA_ARGS:
-                            // echo "TYPE\n";
-                            $this->handleType($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER_EXTRA_ARGS:
                             // echo "TYPE_WITH_MODIFIER\n";
@@ -741,7 +744,6 @@ class MigrationParser
                             $this->handleForeignIdTwoMod($schema, $relationIndexes);
                             break;
                         case $this->FOREIGN_MANY:
-                            // echo "FOREIGN_MANY\n";
                             $this->handleForeignMany($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM:
@@ -771,8 +773,10 @@ class MigrationParser
             $schema->relations[] = $relation;
 
             // remove relations that would be created because of this table. we only need to keep the * - *
-            for ($i = count($relationIndexes) - 1; $i >= 0; $i--) {
-                array_splice($schema->relations, $relationIndexes[$i], 1);
+            $idxs = array_values($relationIndexes);
+            sort($idxs);
+            for ($i = count($idxs) - 1; $i >= 0; $i--) {
+                array_splice($schema->relations, $idxs[$i], 1);
             }
 
             return;
@@ -788,7 +792,34 @@ class MigrationParser
                 }
             }
 
+            // modify cardinality of relation
             if ($i == count($class->fields)) {
+                if (!array_key_exists($fieldname, $relationIndexes)) {
+                    continue;
+                }
+
+                $relation = $schema->relations[$relationIndexes[$fieldname]];
+                $m = new Field();
+                foreach ($modifiers as $modifier) {
+                    $m->unique |= $modifier->unique;
+                    $m->nullable |= $modifier->nullable;
+                    $m->primary |= $modifier->primary;
+                }
+
+                if ($relation->from[0] === "") {
+                    if ($m->unique) {
+                        $relation->to[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->to[1] = Cardinality::Any;
+                    }
+                } else {
+                    // pretty sure this is unreachable code but just in case
+                    if ($m->unique) {
+                        $relation->from[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->from[1] = Cardinality::Any;
+                    }
+                }
                 continue;
             }
 

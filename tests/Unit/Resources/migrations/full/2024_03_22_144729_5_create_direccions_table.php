@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('direccions', function (Blueprint $table) {
-            $table->primary(['provincia', 'calle', ]);
+            $table->primary(['provincia', 'calle',]);
             $table->string('cp');
             $table->string('localidad');
             $table->string('provincia');
