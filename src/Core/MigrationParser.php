@@ -770,6 +770,11 @@ class MigrationParser
 
             $schema->relations[] = $relation;
 
+            // remove relations that would be created because of this table. we only need to keep the * - *
+            for ($i = count($relationIndexes) - 1; $i >= 0; $i--) {
+                array_splice($schema->relations, $relationIndexes[$i], 1);
+            }
+
             return;
         }
 
