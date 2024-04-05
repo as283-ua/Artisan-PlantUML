@@ -401,7 +401,7 @@ class MigrationParser
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $relation = new Relation();
-        $relation->from = ["", Cardinality::ZeroOrOne];
+        $relation->from = ["", Cardinality::One];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
         $relation->to = [$otherclassname, Cardinality::Any];
         $relation->type = RelationType::Association;

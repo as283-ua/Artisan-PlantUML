@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::create('historicos', function (Blueprint $table) {
             $table->id();
             $table->string('observaciones');
-            $table->string('envio_codigo');
-            $table->float('envio_peso');
+            $table->string('envio_codigo')->nullable();
+            $table->float('envio_peso')->nullable();
             $table->foreign(['envio_codigo', 'envio_peso'])->references(['codigo', 'peso'])->on('envios');
-            $table->foreignId('estado_id')->constrained();
+            $table->foreignId('estado_id')->nullable()->constrained();
             $table->timestamps();
         });
     }
