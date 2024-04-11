@@ -18,12 +18,23 @@ use Parle\Token;
 
 use const As283\ArtisanPlantuml\Util\NAMEDTYPES;
 
+enum Action
+{
+    case create;
+    case modify;
+    case drop;
+};
+
 class MigrationParser
 {
     private Parser $parser;
     private Lexer $lex;
 
-    private int $DEFINITION;
+    private Action $action;
+
+    private int $DEFINITION_CREATE;
+    private int $DEFINITION_MODIFY;
+    private int $DEFINITION_DROP;
 
     private int $TYPE;
     private int $TYPE_WITH_MODIFIER;
@@ -53,6 +64,8 @@ class MigrationParser
         */
         $this->parser = new Parser;
         $this->parser->nonassoc("SCHEMA_CREATE");
+        $this->parser->nonassoc("SCHEMA_MODIFY");
+        $this->parser->nonassoc("SCHEMA_DROP");
         $this->parser->nonassoc("DEF_LAMBDA");
         $this->parser->nonassoc("TYPE");
         $this->parser->nonassoc("NAMELESS_TYPE");
@@ -79,7 +92,10 @@ class MigrationParser
         $this->parser->push("START", "DEFINITION");
         $this->parser->push("START", "LINE");
 
-        $this->DEFINITION = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
+        $this->DEFINITION_CREATE = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
+        $this->DEFINITION_MODIFY = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
+        $this->DEFINITION_DROP = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT ')' END");
+
         $this->parser->push("LINES", "LINE");
 
         $this->parser->push("LINES", "LINES LINE");
@@ -111,14 +127,17 @@ class MigrationParser
 
         $this->parser->build();
 
+
         $this->lex = new Lexer;
         $this->lex->push("\$table", $this->parser->tokenId("TABLE"));
         $this->lex->push("->", $this->parser->tokenId("'->'"));
         $this->lex->push("(" . implode("|", NAMEDTYPES) . ")", $this->parser->tokenId("TYPE"));
         $this->lex->push("(id|rememberToken|timestamps)", $this->parser->tokenId("NAMELESS_TYPE"));
         $this->lex->push("(unique|nullable|primary)", $this->parser->tokenId("MODIFIER"));
-        $this->lex->push(";", $this->parser->tokenId("END"));
+
         $this->lex->push("(\\\"\\w*\\\"|'\\w*')", $this->parser->tokenId("TEXT"));
+
+        $this->lex->push(";", $this->parser->tokenId("END"));
         $this->lex->push("\\(", $this->parser->tokenId("'('"));
         $this->lex->push("\\)", $this->parser->tokenId("')'"));
         $this->lex->push("\\,", $this->parser->tokenId("COMMA"));
@@ -126,10 +145,15 @@ class MigrationParser
         $this->lex->push("\\]", $this->parser->tokenId("']'"));
         $this->lex->push("\\{", $this->parser->tokenId("'{'"));
         $this->lex->push("\\}", $this->parser->tokenId("'}'"));
+
         $this->lex->push("foreign", $this->parser->tokenId("FOREIGN"));
         $this->lex->push("foreignId", $this->parser->tokenId("FOREIGN_ID"));
         $this->lex->push("(references|on)", $this->parser->tokenId("FOREIGN_LOCATION"));
+
         $this->lex->push("Schema::create", $this->parser->tokenId("SCHEMA_CREATE"));
+        $this->lex->push("Schema::table", $this->parser->tokenId("SCHEMA_MODIFY"));
+        $this->lex->push("Schema::drop(IfExists)?", $this->parser->tokenId("SCHEMA_DROP"));
+
         $this->lex->push("function\\s*\\(\\s*Blueprint\\s+\\\$table\\s*\\)", $this->parser->tokenId("DEF_LAMBDA"));
         $this->lex->push("\\w+", $this->parser->tokenId("ARG"));
         $this->lex->push("\\s+", Token::SKIP);
@@ -166,7 +190,7 @@ class MigrationParser
      * @param Schema &$schema
      * @return void
      */
-    private function handleDefinition(&$schema, &$class)
+    private function handleCreate(&$schema, &$class)
     {
         // name capitalized and singular
         $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
@@ -176,7 +200,44 @@ class MigrationParser
         } else {
             $class->name = $classname;
         }
+
+        $this->action = Action::create;
     }
+
+    /**
+     * @param ClassMetadata &$class
+     * @param Schema &$schema
+     * @return void
+     */
+    private function handleModifyTable(&$schema, &$class)
+    {
+        // name capitalized and singular
+        $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
+
+        if (array_key_exists($classname, $schema->classes)) {
+            $class = $schema->classes[$classname];
+        } else {
+            $class->name = $classname;
+        }
+
+        $this->action = Action::modify;
+    }
+
+    /**
+     * @param ClassMetadata &$class
+     * @param Schema &$schema
+     * @return void
+     */
+    private function handleDrop(&$schema, &$class)
+    {
+        // name capitalized and singular
+        $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
+
+        if (array_key_exists($classname, $schema->classes)) {
+            unset($classname, $schema->classes);
+        }
+    }
+
 
     /**
      * @param ClassMetadata &$class
@@ -654,6 +715,8 @@ class MigrationParser
      */
     public function parse($in, &$schema)
     {
+        $this->action = null;
+
         $this->parser->consume($in, $this->lex);
         $class = new ClassMetadata();
 
@@ -679,40 +742,37 @@ class MigrationParser
                     break;
                 case Parser::ACTION_REDUCE:
                     switch ($this->parser->reduceId) {
-                        case $this->DEFINITION:
-                            // echo "DEFINITION\n";
-                            $this->handleDefinition($schema, $class);
+                        case $this->DEFINITION_CREATE:
+                            $this->handleCreate($schema, $class);
                             break;
+                        case $this->DEFINITION_MODIFY:
+                            $this->handleModifyTable($schema, $class);
+                            break;
+                        case $this->DEFINITION_DROP:
+                            $this->handleDrop($schema, $class);
+                            return;
                         case $this->TYPE:
-                            // echo "TYPE\n";
                             $this->handleType($class);
                             break;
                         case $this->NAMELESS_TYPE:
-                            // echo "NAMELESS_TYPE\n";
                             $this->handleNameless($class);
                             break;
                         case $this->TYPE_EXTRA_ARGS:
-                            // echo "TYPE\n";
                             $this->handleType($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER:
-                            // echo "TYPE_WITH_MODIFIER\n";
                             $this->handleTypeWithModifier($class);
                             break;
                         case $this->TYPE_WITH_TWO_MODIFIER:
-                            // echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class);
                             break;
                         case $this->TYPE_WITH_MODIFIER_EXTRA_ARGS:
-                            // echo "TYPE_WITH_MODIFIER\n";
                             $this->handleTypeWithModifier($class, false);
                             break;
                         case $this->TYPE_WITH_TWO_MODIFIER_EXTRA_ARGS:
-                            // echo "TYPE_WITH_TWO_MODIFIER\n";
                             $this->handleTypeWithTwoModifiers($class, false);
                             break;
                         case $this->MODIFIER:
-                            // echo "MODIFIER\n";
                             $f = $this->handleModifier();
                             if (!array_key_exists($f->name, $fieldModifiers)) {
                                 $fieldModifiers[$f->name] = [];
@@ -720,7 +780,6 @@ class MigrationParser
                             $fieldModifiers[$f->name][] = $f;
                             break;
                         case $this->MODIFIER_MANY:
-                            // echo "MODIFIER_MANY\n";
                             $fs = $this->handleManyModifiers($class);
                             foreach ($fs as $f) {
                                 if (!array_key_exists($f->name, $fieldModifiers)) {
@@ -730,11 +789,9 @@ class MigrationParser
                             }
                             break;
                         case $this->FOREIGN:
-                            // echo "FOREIGN\n";
                             $this->handleForeign($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_ID:
-                            // echo "FOREIGN_ID\n";
                             $this->handleForeignId($schema, $relationIndexes);
                             break;
                         case $this->FOREIGN_ID_MODIFIER:
@@ -747,11 +804,9 @@ class MigrationParser
                             $this->handleForeignMany($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM:
-                            // echo "FOREIGN_CUSTOM\n";
                             $this->handleForeignCustom($schema, $class, $relationIndexes);
                             break;
                         case $this->FOREIGN_CUSTOM_MANY:
-                            // echo "FOREIGN_CUSTOM_MANY\n";
                             $this->handleManyForeignCustom($schema, $class, $relationIndexes);
                             break;
                     }
@@ -759,6 +814,12 @@ class MigrationParser
             }
             $this->parser->advance();
         } while (Parser::ACTION_ACCEPT != $this->parser->action);
+
+        switch ($this->action) {
+            case Action::create:
+
+            case Action::modify:
+        }
 
         // table might be junction table for many to many
         $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
@@ -772,7 +833,7 @@ class MigrationParser
 
             $schema->relations[] = $relation;
 
-            // remove relations that would be created because of this table. we only need to keep the * - *
+            // remove relations that would be created because of this table. we only need to keep the * -- *
             $idxs = array_values($relationIndexes);
             sort($idxs);
             for ($i = count($idxs) - 1; $i >= 0; $i--) {
@@ -840,5 +901,90 @@ class MigrationParser
     private static function removeQuotes($str)
     {
         return str_replace(["\"", "'"], "", $str);
+    }
+
+    /**
+     * @param ClassMetadata $class
+     * @param Schema &$schema
+     * @param array<string,int> $relationIndexes
+     * @param array<string,Field[]> $fieldModifiers
+     */
+    private function createClass($class, &$schema, $relationIndexes, $fieldModifiers)
+    {
+        // table might be junction table for many to many
+        $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
+        if ((count($classes) == 2) && (count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
+            // echo $relationIndexes;
+
+            $relation = new Relation();
+            $relation->from = [$classes[0], Cardinality::Any];
+            $relation->to = [$classes[1], Cardinality::Any];
+            $relation->type = RelationType::Association;
+
+            $schema->relations[] = $relation;
+
+            // remove relations that would be created because of this table. we only need to keep the * -- *
+            $idxs = array_values($relationIndexes);
+            sort($idxs);
+            for ($i = count($idxs) - 1; $i >= 0; $i--) {
+                array_splice($schema->relations, $idxs[$i], 1);
+            }
+
+            return;
+        }
+
+        // adjust field modifiers
+        foreach ($fieldModifiers as $fieldname => $modifiers) {
+            $i = 0;
+            // find index of field
+            for (; $i < count($class->fields); $i++) {
+                if ($class->fields[$i]->name === $fieldname) {
+                    break;
+                }
+            }
+
+            // modify cardinality of relation
+            if ($i == count($class->fields)) {
+                if (!array_key_exists($fieldname, $relationIndexes)) {
+                    continue;
+                }
+
+                $relation = $schema->relations[$relationIndexes[$fieldname]];
+                $m = new Field();
+                foreach ($modifiers as $modifier) {
+                    $m->unique |= $modifier->unique;
+                    $m->nullable |= $modifier->nullable;
+                    $m->primary |= $modifier->primary;
+                }
+
+                if ($relation->from[0] === "") {
+                    if ($m->unique) {
+                        $relation->to[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->to[1] = Cardinality::Any;
+                    }
+                } else {
+                    // pretty sure this is unreachable code but just in case
+                    if ($m->unique) {
+                        $relation->from[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->from[1] = Cardinality::Any;
+                    }
+                }
+                continue;
+            }
+
+            foreach ($modifiers as $modifier) {
+                $class->fields[$i]->unique |= $modifier->unique;
+                $class->fields[$i]->nullable |= $modifier->nullable;
+                $class->fields[$i]->primary |= $modifier->primary;
+            }
+        }
+
+        // table name only know at the end
+        $schema->classes[$class->name] = $class;
+        foreach ($relationIndexes as $i) {
+            $schema->relations[$i]->from[0] = $class->name;
+        }
     }
 }

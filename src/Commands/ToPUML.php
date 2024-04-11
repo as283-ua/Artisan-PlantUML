@@ -63,7 +63,7 @@ class ToPUML extends Command implements PromptsForMissingInput
             if ($this->option("ignore-default-migration") && in_array(basename($migrationFile), $this->defaultMigrations)) {
                 continue;
             }
-            $file = fopen($migrationFile, "r");
+
             $content = file_get_contents($migrationFile);
             $content = self::getUsefulContent($content);
             $migrationParser->parse($content, $schema);
@@ -80,7 +80,7 @@ class ToPUML extends Command implements PromptsForMissingInput
      */
     private static function getUsefulContent($migration)
     {
-        $startDef = strpos($migration, "Schema::create");
+        $startDef = strpos($migration, "Schema::");
         $endDef = strpos($migration, "});");
 
         return substr($migration, $startDef, $endDef - $startDef + 3);

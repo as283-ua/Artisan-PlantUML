@@ -31,4 +31,14 @@ class ToPumlTest extends TestCase
     {
         $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations/oneone")->assertExitCode(0);
     }
+
+    public function testToPumlCycle()
+    {
+        $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations/cycle")->assertExitCode(0);
+    }
+
+    public function testToPumlModifying()
+    {
+        $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations/modifying")->assertExitCode(0);
+    }
 }

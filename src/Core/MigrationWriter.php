@@ -305,7 +305,7 @@ class MigrationWriter
         }
 
         fwrite($file, "        });\n");
-        fwrite($file, "    }");
+        fwrite($file, "    }\n");
     }
 
     /**
