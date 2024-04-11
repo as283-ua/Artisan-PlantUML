@@ -93,8 +93,8 @@ class MigrationParser
         $this->parser->push("START", "LINE");
 
         $this->DEFINITION_CREATE = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
-        $this->DEFINITION_MODIFY = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
-        $this->DEFINITION_DROP = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT ')' END");
+        $this->DEFINITION_MODIFY = $this->parser->push("DEFINITION", "SCHEMA_MODIFY '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
+        $this->DEFINITION_DROP = $this->parser->push("DEFINITION", "SCHEMA_DROP '(' TEXT ')' END");
 
         $this->parser->push("LINES", "LINE");
 
@@ -190,16 +190,12 @@ class MigrationParser
      * @param Schema &$schema
      * @return void
      */
-    private function handleCreate(&$schema, &$class)
+    private function handleCreate(&$class)
     {
         // name capitalized and singular
         $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
 
-        if (array_key_exists($classname, $schema->classes)) {
-            $class = $schema->classes[$classname];
-        } else {
-            $class->name = $classname;
-        }
+        $class->name = $classname;
 
         $this->action = Action::create;
     }
@@ -209,16 +205,12 @@ class MigrationParser
      * @param Schema &$schema
      * @return void
      */
-    private function handleModifyTable(&$schema, &$class)
+    private function handleModifyTable(&$class)
     {
         // name capitalized and singular
         $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
 
-        if (array_key_exists($classname, $schema->classes)) {
-            $class = $schema->classes[$classname];
-        } else {
-            $class->name = $classname;
-        }
+        $class->name = $classname;
 
         $this->action = Action::modify;
     }
@@ -373,6 +365,11 @@ class MigrationParser
         );
 
         foreach ($fieldnames as $fieldname) {
+            // this is done because if the modified columns have a comma at the end, it counts a las empty field
+            if ($fieldname == "") {
+                continue;
+            }
+
             $field = new Field();
             $field->name = $fieldname;
             switch ($modifier) {
@@ -715,8 +712,6 @@ class MigrationParser
      */
     public function parse($in, &$schema)
     {
-        $this->action = null;
-
         $this->parser->consume($in, $this->lex);
         $class = new ClassMetadata();
 
@@ -743,10 +738,10 @@ class MigrationParser
                 case Parser::ACTION_REDUCE:
                     switch ($this->parser->reduceId) {
                         case $this->DEFINITION_CREATE:
-                            $this->handleCreate($schema, $class);
+                            $this->handleCreate($class);
                             break;
                         case $this->DEFINITION_MODIFY:
-                            $this->handleModifyTable($schema, $class);
+                            $this->handleModifyTable($class);
                             break;
                         case $this->DEFINITION_DROP:
                             $this->handleDrop($schema, $class);
@@ -815,86 +810,14 @@ class MigrationParser
             $this->parser->advance();
         } while (Parser::ACTION_ACCEPT != $this->parser->action);
 
+
         switch ($this->action) {
             case Action::create:
-
+                $this->createClass($class, $schema, $relationIndexes, $fieldModifiers);
+                break;
             case Action::modify:
-        }
-
-        // table might be junction table for many to many
-        $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
-        if ((count($classes) == 2) && (count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
-            // echo $relationIndexes;
-
-            $relation = new Relation();
-            $relation->from = [$classes[0], Cardinality::Any];
-            $relation->to = [$classes[1], Cardinality::Any];
-            $relation->type = RelationType::Association;
-
-            $schema->relations[] = $relation;
-
-            // remove relations that would be created because of this table. we only need to keep the * -- *
-            $idxs = array_values($relationIndexes);
-            sort($idxs);
-            for ($i = count($idxs) - 1; $i >= 0; $i--) {
-                array_splice($schema->relations, $idxs[$i], 1);
-            }
-
-            return;
-        }
-
-        // adjust field modifiers
-        foreach ($fieldModifiers as $fieldname => $modifiers) {
-            $i = 0;
-            // find index of field
-            for (; $i < count($class->fields); $i++) {
-                if ($class->fields[$i]->name === $fieldname) {
-                    break;
-                }
-            }
-
-            // modify cardinality of relation
-            if ($i == count($class->fields)) {
-                if (!array_key_exists($fieldname, $relationIndexes)) {
-                    continue;
-                }
-
-                $relation = $schema->relations[$relationIndexes[$fieldname]];
-                $m = new Field();
-                foreach ($modifiers as $modifier) {
-                    $m->unique |= $modifier->unique;
-                    $m->nullable |= $modifier->nullable;
-                    $m->primary |= $modifier->primary;
-                }
-
-                if ($relation->from[0] === "") {
-                    if ($m->unique) {
-                        $relation->to[1] = Cardinality::ZeroOrOne;
-                    } else {
-                        $relation->to[1] = Cardinality::Any;
-                    }
-                } else {
-                    // pretty sure this is unreachable code but just in case
-                    if ($m->unique) {
-                        $relation->from[1] = Cardinality::ZeroOrOne;
-                    } else {
-                        $relation->from[1] = Cardinality::Any;
-                    }
-                }
-                continue;
-            }
-
-            foreach ($modifiers as $modifier) {
-                $class->fields[$i]->unique |= $modifier->unique;
-                $class->fields[$i]->nullable |= $modifier->nullable;
-                $class->fields[$i]->primary |= $modifier->primary;
-            }
-        }
-
-        // table name only know at the end
-        $schema->classes[$class->name] = $class;
-        foreach ($relationIndexes as $i) {
-            $schema->relations[$i]->from[0] = $class->name;
+                $this->modifyClass($class, $schema, $relationIndexes, $fieldModifiers);
+                break;
         }
     }
 
@@ -917,6 +840,7 @@ class MigrationParser
             // echo $relationIndexes;
 
             $relation = new Relation();
+            // Cardinalities are always any to any because it's impossible to make sure that at least one relation exists to make it 1..*
             $relation->from = [$classes[0], Cardinality::Any];
             $relation->to = [$classes[1], Cardinality::Any];
             $relation->type = RelationType::Association;
@@ -943,6 +867,7 @@ class MigrationParser
                 }
             }
 
+            // if the field doesn't exist but a column does it means that it refers to the fk to another class
             // modify cardinality of relation
             if ($i == count($class->fields)) {
                 if (!array_key_exists($fieldname, $relationIndexes)) {
@@ -974,6 +899,7 @@ class MigrationParser
                 continue;
             }
 
+            // not an fk -> simple field with modifier
             foreach ($modifiers as $modifier) {
                 $class->fields[$i]->unique |= $modifier->unique;
                 $class->fields[$i]->nullable |= $modifier->nullable;
@@ -983,6 +909,79 @@ class MigrationParser
 
         // table name only know at the end
         $schema->classes[$class->name] = $class;
+        foreach ($relationIndexes as $i) {
+            $schema->relations[$i]->from[0] = $class->name;
+        }
+    }
+
+    /**
+     * @param ClassMetadata $class This class should be an already existing class in $schema
+     * @param Schema &$schema
+     * @param array<string,int> $relationIndexes Key is column name, value is index of relation that column refers to.
+     * @param array<string,Field[]> $fieldModifiers
+     */
+    private function modifyClass($class, &$schema, $relationIndexes, $fieldModifiers)
+    {
+        // adjust field modifiers
+        foreach ($fieldModifiers as $fieldname => $modifiers) {
+            $i = 0;
+            // find index of field
+            for (; $i < count($class->fields); $i++) {
+                if ($class->fields[$i]->name === $fieldname) {
+                    break;
+                }
+            }
+
+            // if the field doesn't exist but a column does it means that it refers to the fk to another class
+            // modify cardinality of relation
+            if ($i == count($class->fields)) {
+                if (!array_key_exists($fieldname, $relationIndexes)) {
+                    continue;
+                }
+
+                $relation = $schema->relations[$relationIndexes[$fieldname]];
+                $m = new Field();
+                foreach ($modifiers as $modifier) {
+                    $m->unique |= $modifier->unique;
+                    $m->nullable |= $modifier->nullable;
+                    $m->primary |= $modifier->primary;
+                }
+
+                if ($relation->from[0] === "") {
+                    if ($m->unique) {
+                        $relation->to[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->to[1] = Cardinality::Any;
+                    }
+                } else {
+                    // pretty sure this is unreachable code but just in case
+                    if ($m->unique) {
+                        $relation->from[1] = Cardinality::ZeroOrOne;
+                    } else {
+                        $relation->from[1] = Cardinality::Any;
+                    }
+                }
+                continue;
+            }
+
+            // not an fk -> simple field with modifier
+            foreach ($modifiers as $modifier) {
+                $class->fields[$i]->unique |= $modifier->unique;
+                $class->fields[$i]->nullable |= $modifier->nullable;
+                $class->fields[$i]->primary |= $modifier->primary;
+            }
+        }
+
+        //add new fields
+        foreach ($class->fields as $f) {
+            $schema->classes[$class->name]->fields[] = $f;
+        }
+
+        // remove fields here
+
+
+
+        // add class name to relations
         foreach ($relationIndexes as $i) {
             $schema->relations[$i]->from[0] = $class->name;
         }
