@@ -57,6 +57,11 @@ class MigrationParser
     private int $FOREIGN_CUSTOM;
     private int $FOREIGN_CUSTOM_MANY;
 
+    private int $DROP_COLUMN;
+    private int $DROP_COLUMNS;
+    private int $DROP_FOREIGN;
+
+
     public function __construct()
     {
         /*
@@ -85,6 +90,8 @@ class MigrationParser
         $this->parser->nonassoc("FOREIGN_ID");
         $this->parser->token("FOREIGN_LOCATION");
         $this->parser->token("ARG");
+        $this->parser->token("DROP_COLUMN");
+        $this->parser->token("DROP_FOREIGN");
 
         /*
         * RULES
@@ -124,6 +131,10 @@ class MigrationParser
         $this->FOREIGN_ID = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')'");
         $this->FOREIGN_ID_MODIFIER = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')'");
         $this->FOREIGN_ID_TWO_MODIFIERS = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')' '->' MODIFIER '(' ')'");
+        $this->DROP_COLUMN = $this->parser->push("SPECS", "DROP_COLUMN '(' TEXT ')'");
+        $this->DROP_COLUMNS = $this->parser->push("SPECS", "DROP_COLUMN '(' '[' TEXTS ']' ')'");
+        $this->DROP_FOREIGN = $this->parser->push("SPECS", "DROP_FOREIGN '(' '[' TEXTS ']' ')'");
+
 
         $this->parser->build();
 
@@ -145,6 +156,9 @@ class MigrationParser
         $this->lex->push("\\]", $this->parser->tokenId("']'"));
         $this->lex->push("\\{", $this->parser->tokenId("'{'"));
         $this->lex->push("\\}", $this->parser->tokenId("'}'"));
+
+        $this->lex->push("dropColumn", $this->parser->tokenId("DROP_COLUMN"));
+        $this->lex->push("dropForeign", $this->parser->tokenId("DROP_FOREIGN"));
 
         $this->lex->push("foreign", $this->parser->tokenId("FOREIGN"));
         $this->lex->push("foreignId", $this->parser->tokenId("FOREIGN_ID"));
@@ -226,7 +240,7 @@ class MigrationParser
         $classname = ucfirst(Str::singular(self::removeQuotes($this->parser->sigil(2))));
 
         if (array_key_exists($classname, $schema->classes)) {
-            unset($classname, $schema->classes);
+            unset($schema->classes[$classname]);
         }
     }
 
@@ -653,6 +667,56 @@ class MigrationParser
     }
 
     /**
+     * @param array<string> &$columnsRemoved
+     * @return void
+     */
+    private function handleDropColumn(&$columnsRemoved)
+    {
+        $fieldname = $this->parser->sigil(2);
+        $columnsRemoved[] = self::removeQuotes($fieldname);
+    }
+
+    /**
+     * @param array<string> &$columnsRemoved
+     * @return void
+     */
+    private function handleDropColumns(&$columnsRemoved)
+    {
+        $fieldnames = $this->parser->sigil(3);
+
+        $fieldnames = array_map(function ($x) {
+            return self::removeQuotes($x);
+        }, explode(",", $fieldnames));
+
+        foreach ($fieldnames as $fieldname) {
+            if ($fieldname == "") {
+                continue;
+            }
+            $columnsRemoved[] = $fieldname;
+        }
+    }
+
+    /**
+     * @param array<string> &$columnsRemoved
+     * @return void
+     */
+    private function handleDropForeign(&$relationsRemoved)
+    {
+        $fkcolumns = explode(",", $this->parser->sigil(3));
+        if (count($fkcolumns) < 1) {
+            // ignore if somehow fks aren't specified
+            return;
+        }
+
+        // in this implementation, we'll depend on naming conventions, since we aren't keeping track of the column names for fks
+        $fk = $fkcolumns[0];
+        $classname = explode("_", $fk)[0];
+        // remove ' from string
+        $classname = substr($classname, 1);
+        $relationsRemoved[] = ucfirst(Str::singular($classname));
+    }
+
+    /**
      * @param Schema &$schema
      * @param ClassMetadata &$class
      * @param array<string,int> &$relationIndexes
@@ -726,6 +790,18 @@ class MigrationParser
          * @var array<string,Field[]>
          */
         $fieldModifiers = [];
+
+        // for migrations that modify a table, track removed columns
+        /**
+         * @var array<string>
+         */
+        $columnsRemoved = [];
+
+        // for migrations that modify a table, track removed fks
+        /**
+         * @var array<string>
+         */
+        $relationsRemoved = [];
         do {
             switch ($this->parser->action) {
                 case Parser::ACTION_ERROR:
@@ -804,6 +880,15 @@ class MigrationParser
                         case $this->FOREIGN_CUSTOM_MANY:
                             $this->handleManyForeignCustom($schema, $class, $relationIndexes);
                             break;
+                        case $this->DROP_COLUMN:
+                            $this->handleDropColumn($columnsRemoved);
+                            break;
+                        case $this->DROP_COLUMNS:
+                            $this->handleDropColumns($columnsRemoved);
+                            break;
+                        case $this->DROP_FOREIGN:
+                            $this->handleDropForeign($relationsRemoved);
+                            break;
                     }
                     break;
             }
@@ -816,7 +901,7 @@ class MigrationParser
                 $this->createClass($class, $schema, $relationIndexes, $fieldModifiers);
                 break;
             case Action::modify:
-                $this->modifyClass($class, $schema, $relationIndexes, $fieldModifiers);
+                $this->modifyClass($class, $schema, $relationIndexes, $fieldModifiers, $columnsRemoved, $relationsRemoved);
                 break;
         }
     }
@@ -919,8 +1004,10 @@ class MigrationParser
      * @param Schema &$schema
      * @param array<string,int> $relationIndexes Key is column name, value is index of relation that column refers to.
      * @param array<string,Field[]> $fieldModifiers
+     * @param array<string> $columnsRemoved
+     * @param array<string> $relationsRemoved
      */
-    private function modifyClass($class, &$schema, $relationIndexes, $fieldModifiers)
+    private function modifyClass($class, &$schema, $relationIndexes, $fieldModifiers, $columnsRemoved, $relationsRemoved)
     {
         // adjust field modifiers
         foreach ($fieldModifiers as $fieldname => $modifiers) {
@@ -978,8 +1065,36 @@ class MigrationParser
         }
 
         // remove fields here
+        $fields = $schema->classes[$class->name]->fields;
+        foreach ($columnsRemoved as $colRemove) {
+            $i = 0;
+            foreach ($fields as $value) {
+                if ($colRemove == $value->name) {
+                    break;
+                }
+                $i++;
+            }
 
+            if ($i < count($fields)) {
+                unset($fields[$i]);
+            }
+        }
+        $schema->classes[$class->name]->fields = $fields;
 
+        // remove relations here
+        foreach ($relationsRemoved as $otherClass) {
+            $i = 0;
+
+            foreach ($schema->relations as $index => $relation) {
+                //delete first instance
+                if (($relation->from[0] === $class->name && $relation->to[0] === $otherClass) ||
+                    ($relation->from[0] === $otherClass && $relation->to[0] === $class->name)
+                ) {
+                    unset($schema->relations[$index]);
+                    break;
+                }
+            }
+        }
 
         // add class name to relations
         foreach ($relationIndexes as $i) {

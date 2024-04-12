@@ -67,9 +67,12 @@ class ToPUML extends Command implements PromptsForMissingInput
             $content = file_get_contents($migrationFile);
             $content = self::getUsefulContent($content);
             $migrationParser->parse($content, $schema);
+            // echo "after {$migrationFile}: \n";s
+            // print_r($schema);
         }
 
         $f = fopen($this->argument("file"), "w");
+
         fwrite($f, PlantUmlProcessor::serialize($schema));
         fclose($f);
     }
@@ -81,8 +84,13 @@ class ToPUML extends Command implements PromptsForMissingInput
     private static function getUsefulContent($migration)
     {
         $startDef = strpos($migration, "Schema::");
-        $endDef = strpos($migration, "});");
+        if (substr($migration, $startDef, 12) === "Schema::drop") {
+            $endDef = strpos($migration, ";") + 1;
+        } else {
+            // creating and modifying a table has an inner function
+            $endDef = strpos($migration, "});") + 3;
+        }
 
-        return substr($migration, $startDef, $endDef - $startDef + 3);
+        return substr($migration, $startDef, $endDef - $startDef);
     }
 }

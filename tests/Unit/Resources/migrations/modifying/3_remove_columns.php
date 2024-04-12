@@ -9,16 +9,13 @@ class AddForeignKeyToExampleTable extends Migration
     public function up()
     {
         Schema::table('examples', function (Blueprint $table) {
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->dropColumn('description');
         });
     }
 
     public function down()
     {
         Schema::table('examples', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
         });
     }
 }
