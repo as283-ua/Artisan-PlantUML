@@ -303,26 +303,56 @@ class MigrationWriter
 
     /**
      * @param resource $file
-     * @param string $table
-     * @param string $otherTable
+     * @param Relation $relation
      * @param array<string,Type> $otherClassKeys
      */
-    private static function writeUpAddFks($file, $table, $otherTable, $otherClassKeys)
+    private static function writeUpAddFks($file, $relation, $otherClassKeys)
     {
+        $cardinality = $relation->from[1];
+        $otherCardinality = $relation->to[1];
+
+        $table = strtolower($relation->from[0]);
+        $otherTable = strtolower($relation->to[0]);
+
+        if (Cardinality::compare($cardinality, $otherCardinality) === -1) {
+            $aux = $cardinality;
+            $cardinality = $otherCardinality;
+            $otherCardinality = $aux;
+
+            $table = strtolower($relation->to[0]);
+            $otherTable = strtolower($relation->from[0]);
+        }
+
+        // $cardinality is the more restrictive one
+
         fwrite($file, "        Schema::table('" . $table . "', function (Blueprint \$table) {\n");
 
-        foreach ($otherClassKeys as $key => $type) {
-            fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $otherTable . "_" . $key . "');\n");
-        }
+        $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
+        $nullable = $cardinality == Cardinality::ZeroOrOne;
 
-        if (count($otherClassKeys) > 1) {
-            fwrite($file, "            \$table->foreign(['{$otherTable}_" . implode("', '{$otherTable}_", array_keys($otherClassKeys)) . "'])->references(['" . implode("', '", array_keys($otherClassKeys)) . "'])->on('" . $otherTable . "');\n");
+        $otherUsesId = isset($otherClassPKs["id"]);
+
+        if ($otherUsesId) {
+            $unique = $unique ? "->unique()" : "";
+            $nullable = $nullable ? "->nullable()" : "";
+            fwrite($file, "            \$table->foreignId('" . $otherTable . "_id')" . $unique . $nullable . "->constrained();\n");
         } else {
-            fwrite($file, "            \$table->foreign('{$otherTable}_" . array_keys($otherClassKeys)[0] . "')->references('" . array_keys($otherClassKeys)[0] . "')->on('" . $otherTable . "');\n");
+            $fks = [];
+            foreach ($otherClassKeys as $key => $type) {
+                $columnName = $otherTable . "_" . $key;
+                $nullable = $nullable ? "->nullable()" : "";
+                fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "')" . $nullable . ";\n");
+                $fks[] = $columnName;
+            }
+
+            if ($unique) {
+                fwrite($file, "            \$table->unique(['" . implode("', '", $fks) . "']);\n");
+            }
+
+            fwrite($file, "            \$table->foreign(['" . implode("', '", $fks) . "'])->references(['" . implode("', '", array_keys($otherClassKeys)) . "'])->on('" . $otherTable . "');\n");
         }
 
-        fwrite($file, "        });\n");
-        fwrite($file, "    }\n");
+        fwrite($file, "        });\n    }\n\n");
     }
 
     /**
@@ -479,7 +509,7 @@ class MigrationWriter
         $otherClassKeys = SchemaUtil::classKeys($schema->classes[$otherClassName], $command->option("use-composite-keys"));
 
         self::writeUseStatements($migration);
-        self::writeUpAddFks($migration, $tableName, $relatedTable, $otherClassKeys);
+        self::writeUpAddFks($migration, $relation, $otherClassKeys);
 
         $fieldNames = array_keys($otherClassKeys);
 
