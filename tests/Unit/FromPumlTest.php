@@ -81,11 +81,11 @@ class FromPumlTest extends TestCase
         $this->assertEquals(2, $migrationCount);
     }
 
-    public function testMigrationOneOneRelations()
+    public function testMigrationComplexRelations()
     {
         $this->cleanOutFiles();
 
-        $this->artisan("make:from-puml tests/Unit/Resources/diagrams/relationTest.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->assertExitCode(0);
+        $this->artisan("make:from-puml tests/Unit/Resources/diagrams/complexRelationTest.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->assertExitCode(0);
 
         $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
 
@@ -167,5 +167,16 @@ class FromPumlTest extends TestCase
         $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*"));
 
         $this->assertEquals(2, $migrationCount);
+    }
+
+    public function testRelationToSelfTwice()
+    {
+        $this->cleanOutFiles();
+
+        $this->artisan("make:from-puml tests/Unit/Resources/diagrams/selfRelationTwice.puml --no-models --path-migrations " . self::OUT_DIR . "/migrations")->assertExitCode(0);
+
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*"));
+
+        $this->assertEquals(1, $migrationCount);
     }
 }

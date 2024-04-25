@@ -5,7 +5,6 @@ namespace As283\ArtisanPlantuml\Core;
 use As283\ArtisanPlantuml\Util\SchemaUtil;
 use Illuminate\Support\Pluralizer;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
-use As283\PlantUmlProcessor\Model\Field;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Type;
 use As283\PlantUmlProcessor\Model\Cardinality;
@@ -36,10 +35,11 @@ class MigrationWriter
     /**
      * @param string $tableName
      * @param Relation $relation
+     * @param int $index
      */
-    private static function fileNameFKs($tableName, $relatedTable)
+    private static function fileNameFKs($tableName, $relatedTable, $index)
     {
-        return date("Y_m_d_His") . "_add_" . $relatedTable . "_foreign_key_to_" . $tableName . "_table.php";
+        return date("Y_m_d_His") . "_" . $index . "_add_" . $relatedTable . "_foreign_key_to_" . $tableName . "_table.php";
     }
 
     /**
@@ -152,6 +152,7 @@ class MigrationWriter
             if (count($indexes) == 1) {
                 $j = null;
             }
+
             foreach ($indexes as $index) {
                 if (array_key_exists($index, $schema->relations) === false) {
                     continue;
@@ -159,13 +160,28 @@ class MigrationWriter
                 $relation = $schema->relations[$index];
 
                 $cardinality = SchemaUtil::getCardinality($class->name, $relation);
+                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+
+                // when a class is related to itself, choose the most restrictive cardinality for this iteration so that it doesn't skip the relation
+                if ($class->name === $relatedClassName) {
+                    $cardinality = $relation->from[1];
+                    $otherCardinality = $relation->to[1];
+
+                    if ((($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne) &&
+                            ($otherCardinality === Cardinality::One || $otherCardinality === Cardinality::ZeroOrOne)) ||
+
+                        ($cardinality === Cardinality::ZeroOrOne  && $otherCardinality === Cardinality::One)
+                    ) {
+                        $aux = $cardinality;
+                        $cardinality = $otherCardinality;
+                        $otherCardinality = $aux;
+                    }
+                }
 
                 // Cardinality of many goes in another table, skip here
                 if ($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne) {
                     continue;
                 }
-
-                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
 
                 if ($class->name !== $relatedClassName) {
                     // Fk goes in more restrictive table
@@ -180,6 +196,7 @@ class MigrationWriter
                 } else {
                     // set relation to the most restrictive one
                     if ($otherCardinality == Cardinality::One) {
+                        $otherCardinality = $cardinality;
                         $cardinality = Cardinality::One;
                     }
                 }
@@ -216,9 +233,9 @@ class MigrationWriter
                 }
 
                 // don't write the same fk twice
-                if ($class->name === $relatedClassName) {
-                    break;
-                }
+                // if ($class->name === $relatedClassName) {
+                //     break;
+                // }
 
                 $j++;
             }
@@ -290,7 +307,7 @@ class MigrationWriter
      * @param string $otherTable
      * @param array<string,Type> $otherClassKeys
      */
-    private static function writeUpFks($file, $table, $otherTable, $otherClassKeys)
+    private static function writeUpAddFks($file, $table, $otherTable, $otherClassKeys)
     {
         fwrite($file, "        Schema::table('" . $table . "', function (Blueprint \$table) {\n");
 
@@ -433,9 +450,10 @@ class MigrationWriter
     /**
      * @param Relation $relation
      * @param Schema $schema
+     * @param int $index
      * @param Command $command
      */
-    public static function writeMissingRelation($relation, $schema, $command)
+    public static function writeMissingRelation($relation, $schema, $index, $command)
     {
         if ($relation->from[1] === Cardinality::One || $relation->from[1] === Cardinality::ZeroOrOne) {
             $className = $relation->from[0];
@@ -454,14 +472,14 @@ class MigrationWriter
             $path = substr($path, 0, -1);
         }
 
-        $migrationFile = $path . "/" . self::fileNameFKs($tableName, $relatedTable);
+        $migrationFile = $path . "/" . self::fileNameFKs($tableName, $relatedTable, $index);
 
         $migration = fopen($migrationFile, "w");
 
         $otherClassKeys = SchemaUtil::classKeys($schema->classes[$otherClassName], $command->option("use-composite-keys"));
 
         self::writeUseStatements($migration);
-        self::writeUpFks($migration, $tableName, $relatedTable, $otherClassKeys);
+        self::writeUpAddFks($migration, $tableName, $relatedTable, $otherClassKeys);
 
         $fieldNames = array_keys($otherClassKeys);
 

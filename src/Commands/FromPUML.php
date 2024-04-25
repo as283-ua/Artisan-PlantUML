@@ -97,13 +97,14 @@ class FromPUML extends Command implements PromptsForMissingInput
 
         // Write junction tables
         if (!$this->option('no-migrations')) {
-            foreach ($schema->relations as $i => $relation) {
+            foreach ($schema->relations as $relation) {
                 if (
                     ($relation->from[1] === Cardinality::Any || $relation->from[1] === Cardinality::AtLeastOne)
                     &&
                     ($relation->to[1] === Cardinality::Any || $relation->to[1] === Cardinality::AtLeastOne)
                 ) {
                     MigrationWriter::writeJunctionTable($relation->from[0], $relation->to[0], $schema, $i, $this);
+                    $i++;
                 }
             }
         }
@@ -111,7 +112,9 @@ class FromPUML extends Command implements PromptsForMissingInput
         // Write missing relations
         if (!$this->option('no-migrations')) {
             foreach ($missingRelations as $relation) {
-                MigrationWriter::writeMissingRelation($relation, $schema, $this);
+                print_r($relation);
+                MigrationWriter::writeMissingRelation($relation, $schema, $i, $this);
+                $i++;
             }
         }
 
