@@ -455,7 +455,7 @@ class MigrationWriter
      * @param Command $command. For outputting messages to the console and getting command line parameters and options
      * @return void
      */
-    public static function writeJunctionTable($class1, $class2, &$schema, $relationIndex, $command)
+    public static function writeJunctionTable($class1, $class2, &$schema, $index, $command)
     {
         $path = $command->option("path-migrations"); // Remove trailing slash
 
@@ -463,7 +463,7 @@ class MigrationWriter
             $path = substr($path, 0, -1);
         }
 
-        $migrationFile = $path . "/" . self::fileName([$class1, $class2]);
+        $migrationFile = $path . "/" . self::fileName([$class1, $class2], $index);
 
         $migration = fopen($migrationFile, "w");
 
