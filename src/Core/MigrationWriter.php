@@ -390,7 +390,7 @@ class MigrationWriter
                 fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columnName . "');\n");
             }
         } else {
-            fwrite($file, "            \$table->dropForeign('{$otherTable}_" . $columns . "');\n");
+            fwrite($file, "            \$table->dropForeign(['{$otherTable}_" . $columns . "]');\n");
             fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columns . "');\n");
         }
         fwrite($file, "        });\n");
