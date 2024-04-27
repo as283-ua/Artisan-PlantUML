@@ -68,8 +68,7 @@ class ModelWriter
         }
 
         if (
-            in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne])
-            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])
+            $cardinality1 === $cardinality2
         ) {
             // FK is in the class alphabetically first
             if ($className1 < $className2) {
@@ -78,11 +77,13 @@ class ModelWriter
                 return "hasOne";
             }
         }
-        // echo "\n1. ";
-        // print_r($cardinality1);
 
-        // echo "\n2. ";
-        // print_r($cardinality2);
+        if ($cardinality1 === Cardinality::One) {
+            return "belongsTo";
+        }
+
+        // cardinality1 = zeroOne and cardinality2 = One -> 2 more restrictive, current model does not contain fk
+        return "hasOne";
     }
 
     /**
@@ -97,7 +98,7 @@ class ModelWriter
     {
         $class = $schema->classes[$className];
         $keysTypes = SchemaUtil::classKeys($class);
-        $keys = array_keyS($keysTypes);
+        $keys = array_keys($keysTypes);
 
         // Set primary key if not id
         if ($keys[0] != "id") {
