@@ -311,8 +311,8 @@ class MigrationWriter
         $cardinality = $relation->from[1];
         $otherCardinality = $relation->to[1];
 
-        $table = strtolower($relation->from[0]);
-        $otherTable = strtolower($relation->to[0]);
+        $table = Pluralizer::plural(strtolower($relation->from[0]));
+        $otherTable = Pluralizer::plural(strtolower($relation->to[0]));
 
         if (Cardinality::compare($cardinality, $otherCardinality) === -1) {
             $aux = $cardinality;
