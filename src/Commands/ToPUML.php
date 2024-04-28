@@ -90,7 +90,6 @@ class ToPUML extends Command implements PromptsForMissingInput
 
         if (substr($migration, $startDef, 12) === "Schema::drop") {
             $endDef = strpos($migration, ";") + 1;
-            echo substr($migration, $startDef, $endDef - $startDef) . "\n";
         } else {
             // creating and modifying a table has an inner function
             $endDef = strpos($migration, "});") + 3;

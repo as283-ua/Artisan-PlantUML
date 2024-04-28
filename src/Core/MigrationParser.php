@@ -97,7 +97,6 @@ class MigrationParser
         * RULES
         */
         $this->parser->push("START", "DEFINITION");
-        $this->parser->push("START", "LINE");
 
         $this->DEFINITION_CREATE = $this->parser->push("DEFINITION", "SCHEMA_CREATE '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
         $this->DEFINITION_MODIFY = $this->parser->push("DEFINITION", "SCHEMA_MODIFY '(' TEXT COMMA DEF_LAMBDA '{' LINES '}' ')' END");
