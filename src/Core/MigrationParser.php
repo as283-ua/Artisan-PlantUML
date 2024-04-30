@@ -921,7 +921,7 @@ class MigrationParser
         // table might be junction table for many to many
         $classes = array_map(fn ($x) => ucfirst($x), explode("_", $class->name));
         if ((count($classes) == 2) && (count($class->fields) == 1) && ($class->fields[0]->name === "id")) {
-            // echo $relationIndexes;
+            // print_r($relationIndexes);
 
             $relation = new Relation();
             // Cardinalities are always any to any because it's impossible to make sure that at least one relation exists to make it 1..*
