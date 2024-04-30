@@ -366,7 +366,7 @@ class MigrationParser
     /**
      * @return Field[]
      */
-    private function handleManyModifiers(&$class)
+    private function handleManyModifiers()
     {
         $fs = [];
         $modifier = $this->parser->sigil(0);
@@ -850,7 +850,7 @@ class MigrationParser
                             $fieldModifiers[$f->name][] = $f;
                             break;
                         case $this->MODIFIER_MANY:
-                            $fs = $this->handleManyModifiers($class);
+                            $fs = $this->handleManyModifiers();
                             foreach ($fs as $f) {
                                 if (!array_key_exists($f->name, $fieldModifiers)) {
                                     $fieldModifiers[$f->name] = [];
