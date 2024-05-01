@@ -70,6 +70,17 @@ class FromPumlTest extends TestCase
         $this->assertEquals(8, $migrationCount);
     }
 
+    public function testMigrationBigOnlyIds()
+    {
+        $this->cleanOutFiles();
+
+        $this->artisan("make:from-puml tests/Unit/Resources/diagrams/diagramaEjemploOnlyIds.puml --no-models --use-composite-keys --path-migrations=" . self::OUT_DIR . "/migrations")->assertExitCode(0);
+
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*_create_*.php"));
+
+        $this->assertEquals(8, $migrationCount);
+    }
+
     public function testMigrationRepeatedFk()
     {
         $this->cleanOutFiles();

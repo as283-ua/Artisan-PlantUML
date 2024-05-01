@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('usuarios', function (Blueprint $table) {
-            $table->primary('email');
+            $table->id();
             $table->string('email');
             $table->string('password');
             $table->string('nombre');
             $table->string('apikey');
-            $table->string('rol_nombre');
-            $table->foreign(['rol_nombre'])->references(['nombre'])->on('rols');
+            $table->foreignId('direccion_id')->unique()->constrained();
+            $table->foreignId('rol_id')->constrained();
             $table->timestamps();
         });
     }

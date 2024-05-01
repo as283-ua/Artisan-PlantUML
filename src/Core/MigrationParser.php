@@ -127,9 +127,9 @@ class MigrationParser
         $this->FOREIGN_CUSTOM = $this->parser->push("SPECS", "FOREIGN '(' TEXT ')' '->' FOREIGN_LOCATION '(' TEXT ')' '->' FOREIGN_LOCATION '(' TEXT ')'");
         $this->FOREIGN_MANY = $this->parser->push("SPECS", "FOREIGN '(' '[' TEXTS ']' ')'");
         $this->FOREIGN = $this->parser->push("SPECS", "FOREIGN '(' TEXT ')'");
-        $this->FOREIGN_ID = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')'");
-        $this->FOREIGN_ID_MODIFIER = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')'");
         $this->FOREIGN_ID_TWO_MODIFIERS = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')' '->' MODIFIER '(' ')'");
+        $this->FOREIGN_ID_MODIFIER = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')' '->' MODIFIER '(' ')'");
+        $this->FOREIGN_ID = $this->parser->push("SPECS", "FOREIGN_ID '(' TEXT ')'");
         $this->DROP_COLUMN = $this->parser->push("SPECS", "DROP_COLUMN '(' TEXT ')'");
         $this->DROP_COLUMNS = $this->parser->push("SPECS", "DROP_COLUMN '(' '[' TEXTS ']' ')'");
         $this->DROP_FOREIGN = $this->parser->push("SPECS", "DROP_FOREIGN '(' '[' TEXTS ']' ')'");
@@ -951,9 +951,11 @@ class MigrationParser
                 }
             }
 
-            // if the field doesn't exist but a column does it means that it refers to the fk to another class
+            // if the field doesn't exist but a column it means that it refers to the fk to another class
             // modify cardinality of relation
-            if ($i == count($class->fields)) {
+            if ($i >= count($class->fields)) {
+
+
                 if (!array_key_exists($fieldname, $relationIndexes)) {
                     continue;
                 }

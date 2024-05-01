@@ -8,16 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tarifas', function (Blueprint $table) {
+        Schema::create('envio_tarifa', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
-            $table->float('coste');
-            $table->timestamps();
+            $table->foreignId('envio_id')->constrained();
+            $table->foreignId('tarifa_id')->constrained();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('tarifas');
+        Schema::dropIfExists('envio_tarifa');
     }
 };

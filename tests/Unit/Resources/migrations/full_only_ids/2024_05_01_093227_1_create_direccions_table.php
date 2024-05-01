@@ -15,9 +15,6 @@ return new class extends Migration
             $table->string('provincia');
             $table->string('calle');
             $table->integer('numero');
-            $table->string('usuario_email')->nullable();
-            $table->unique(['usuario_email']);
-            $table->foreign(['usuario_email'])->references(['email'])->on('usuarios');
             $table->timestamps();
         });
     }
