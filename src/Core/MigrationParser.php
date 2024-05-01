@@ -528,8 +528,6 @@ class MigrationParser
         $mod1 = $this->parser->sigil(5);
         $mod2 = $this->parser->sigil(9);
 
-        echo "{$mod1} {$mod2} \n";
-
         $class_pk = explode("_", $fieldname);
         if (count($class_pk) < 1) {
             return;
@@ -972,15 +970,19 @@ class MigrationParser
                 if ($relation->from[0] === "") {
                     if ($m->unique) {
                         $relation->to[1] = Cardinality::ZeroOrOne;
-                    } else {
-                        $relation->to[1] = Cardinality::Any;
+                    }
+
+                    if ($m->nullable) {
+                        $relation->from[1] = Cardinality::ZeroOrOne;
                     }
                 } else {
                     // pretty sure this is unreachable code but just in case
                     if ($m->unique) {
                         $relation->from[1] = Cardinality::ZeroOrOne;
-                    } else {
-                        $relation->from[1] = Cardinality::Any;
+                    }
+
+                    if ($m->nullable) {
+                        $relation->to[1] = Cardinality::ZeroOrOne;
                     }
                 }
                 continue;

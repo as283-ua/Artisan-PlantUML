@@ -27,7 +27,7 @@ class ToPumlTest extends TestCase
         $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations/full")->assertExitCode(0);
     }
 
-    public function testToPumlGeneralOnlyIds()
+    public function testToPumlNoCustomKeys()
     {
         $this->artisan("make:to-puml tests/Unit/Resources/out/diagrams/diagram.puml --path=tests/Unit/Resources/migrations/full_only_ids")->assertExitCode(0);
     }

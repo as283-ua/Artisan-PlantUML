@@ -14,7 +14,8 @@ return new class extends Migration
             $table->string('envio_codigo')->nullable();
             $table->float('envio_peso')->nullable();
             $table->foreign(['envio_codigo', 'envio_peso'])->references(['codigo', 'peso'])->on('envios');
-            $table->foreignId('estado_id')->nullable()->constrained();
+            $table->foreignId('estado_id')->constrained();
+            $table->nullable('estado_id');
             $table->timestamps();
         });
     }
