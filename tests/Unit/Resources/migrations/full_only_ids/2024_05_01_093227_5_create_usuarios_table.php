@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('password');
             $table->string('nombre');
             $table->string('apikey');
-            $table->foreignId('direccion_id')->unique()->constrained();
+            $table->foreignId('direccion_id')->unique()->nullable()->constrained();
             $table->foreignId('rol_id')->constrained();
             $table->timestamps();
         });

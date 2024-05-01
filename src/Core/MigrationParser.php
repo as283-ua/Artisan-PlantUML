@@ -524,9 +524,12 @@ class MigrationParser
      */
     private function handleForeignIdTwoMod(&$schema, &$relationIndexes)
     {
+        echo "AAAAAAAAAAAAAAAAA\n";
         $fieldname = self::removeQuotes($this->parser->sigil(2));
         $mod1 = $this->parser->sigil(5);
         $mod2 = $this->parser->sigil(9);
+
+        echo "{$mod1} {$mod2} \n";
 
         $class_pk = explode("_", $fieldname);
         if (count($class_pk) < 1) {
@@ -547,9 +550,8 @@ class MigrationParser
         } else {
             $relation->to = [$otherclassname, Cardinality::Any];
         }
-        $relation->from = ["", Cardinality::ZeroOrOne];
+
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
-        $relation->to = [$otherclassname, Cardinality::Any];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
