@@ -203,21 +203,33 @@ class MigrationWriter
 
                 $otherClass = $schema->classes[$relatedClassName];
                 $otherClassPKs = SchemaUtil::classKeys($otherClass, $command->option("use-composite-keys"));
-                $otherUsesId = isset($otherClassPKs["id"]);
+
+                $usesId = isset($otherClassPKs["id"]);
+                $useForeignId = $usesId && count($indexes) <= 1;
+
+                if ($usesId && !$useForeignId) {
+                    $otherClassPKs["id"] = Type::bigint;
+                }
 
                 $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
                 $nullable = $cardinality == Cardinality::ZeroOrOne;
 
-                if ($otherUsesId) {
+                if ($useForeignId) {
                     $unique = $unique ? "->unique()" : "";
                     $nullable = $nullable ? "->nullable()" : "";
-                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id" . $j . "')" . $unique . $nullable . "->constrained();\n");
+                    fwrite($file, "            \$table->foreignId('" . strtolower($relatedClassName) . "_id')" . $unique . $nullable . "->constrained();\n");
                 } else {
                     $fks = [];
                     foreach ($otherClassPKs as $key => $type) {
                         $columnName = strtolower($relatedClassName) . "_" . $key . $j;
                         $nullable = $nullable ? "->nullable()" : "";
-                        fwrite($file, "            \$table->" . SchemaUtil::fieldTypeToLaravelType($type) . "('" . $columnName . "')" . $nullable . ";\n");
+
+                        $laravelType = SchemaUtil::fieldTypeToLaravelType($type);
+                        if ($key === "id") {
+                            $laravelType = "unsignedBigInteger";
+                        }
+
+                        fwrite($file, "            \$table->" . $laravelType . "('" . $columnName . "')" . $nullable . ";\n");
                         $fks[] = $columnName;
                     }
 
