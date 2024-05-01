@@ -524,7 +524,6 @@ class MigrationParser
      */
     private function handleForeignIdTwoMod(&$schema, &$relationIndexes)
     {
-        echo "AAAAAAAAAAAAAAAAA\n";
         $fieldname = self::removeQuotes($this->parser->sigil(2));
         $mod1 = $this->parser->sigil(5);
         $mod2 = $this->parser->sigil(9);
