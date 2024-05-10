@@ -173,6 +173,9 @@ class MigrationParser
         $this->lex->push("->constrained\\(\\)", Token::SKIP);
         $this->lex->push("->useCurrent\\(\\)", Token::SKIP);
         $this->lex->push("->((cascadeOnDelete|nullOnDelete|noActionOnDelete|restrictOnDelete)\\(\\)|onDelete\\(\\\"\w+\\\"\\))", Token::SKIP);
+        $this->lex->push("->((cascadeOnDelete|nullOnDelete|noActionOnDelete|restrictOnDelete)\\(\\)|onDelete\\(\\\"\w+\\\"\\))", Token::SKIP);
+        $this->lex->push("\\/\\/.*\\n", Token::SKIP); //comments
+        $this->lex->push("\\/\\*.*\\s*.*\\s*\\*\\/", Token::SKIP); //comments
 
         $this->lex->build();
     }
