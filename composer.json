@@ -1,7 +1,7 @@
 {
     "name": "as283/artisan-plantuml",
     "description": "Laravel Artisan commands for generating migrations and Eloquent models from PlantUML class diagrams and vice-versa.",
-    "license": "MIT",
+    "license": "GPL",
     "autoload": {
         "psr-4": {
             "As283\\ArtisanPlantuml\\": "src/"
@@ -21,7 +21,7 @@
             "email": "as283@alu.ua.es"
         }
     ],
-    "repositories":[
+    "repositories": [
         {
             "type": "vcs",
             "url": "https://github.com/as283-ua/PlantUML-Processor.git"

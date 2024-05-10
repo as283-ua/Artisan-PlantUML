@@ -108,6 +108,15 @@ class MigrationWriter
             }
             fwrite($file, ";\n");
         }
+
+        $useComposite = $command->option("use-composite-keys");
+        if (!$useComposite) {
+            $keys = SchemaUtil::classKeys($class, true);
+            if (count($keys) > 1) {
+                $uniques = implode("', '", array_keys($keys));
+                fwrite($file, "            \$table->unique(['{$uniques}']);\n");
+            }
+        }
     }
 
     /**
