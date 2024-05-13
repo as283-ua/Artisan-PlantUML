@@ -28,7 +28,7 @@
         }
     ],
     "require": {
-        "as283/plant-uml-processor": "dev-main"
+        "as283/plant-uml-processor": "^0.1"
     },
     "require-dev": {
         "orchestra/testbench": "^8.21",
