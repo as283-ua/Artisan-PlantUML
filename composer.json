@@ -1,5 +1,6 @@
 {
     "name": "as283/artisan-plantuml",
+    "version": "1.0.0",
     "description": "Laravel Artisan commands for generating migrations and Eloquent models from PlantUML class diagrams and vice-versa.",
     "license": "GPL",
     "autoload": {
