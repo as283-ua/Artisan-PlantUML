@@ -2,7 +2,7 @@
 
 namespace As283\ArtisanPlantuml\Core;
 
-use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Multiplicity;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Field;
 use As283\PlantUmlProcessor\Model\Relation;
@@ -438,20 +438,20 @@ class MigrationParser
 
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
-        $cardinality = Cardinality::One;
+        $multiplicity = Multiplicity::One;
         if ($fieldCopy->nullable) {
-            $cardinality = Cardinality::ZeroOrOne;
+            $multiplicity = Multiplicity::ZeroOrOne;
         }
 
-        $otherCardinality = Cardinality::Any;
+        $otherMultiplicity = Multiplicity::Any;
         if ($fieldCopy->unique) {
-            $otherCardinality = Cardinality::ZeroOrOne;
+            $otherMultiplicity = Multiplicity::ZeroOrOne;
         }
 
         $relation = new Relation();
-        $relation->from = ["", $cardinality];
+        $relation->from = ["", $multiplicity];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
-        $relation->to = [$otherclassname, $otherCardinality];
+        $relation->to = [$otherclassname, $otherMultiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -475,9 +475,9 @@ class MigrationParser
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $relation = new Relation();
-        $relation->from = ["", Cardinality::One];
+        $relation->from = ["", Multiplicity::One];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
-        $relation->to = [$otherclassname, Cardinality::Any];
+        $relation->to = [$otherclassname, Multiplicity::Any];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -503,15 +503,15 @@ class MigrationParser
 
         $relation = new Relation();
         if ($mod === "nullable") {
-            $relation->from = ["", Cardinality::ZeroOrOne];
+            $relation->from = ["", Multiplicity::ZeroOrOne];
         } else {
-            $relation->from = ["", Cardinality::One];
+            $relation->from = ["", Multiplicity::One];
         }
 
         if ($mod === "unique") {
-            $relation->to = [$otherclassname, Cardinality::ZeroOrOne];
+            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
         } else {
-            $relation->to = [$otherclassname, Cardinality::Any];
+            $relation->to = [$otherclassname, Multiplicity::Any];
         }
 
         $relation->type = RelationType::Association;
@@ -540,15 +540,15 @@ class MigrationParser
 
         $relation = new Relation();
         if ($mod1 === "nullable" || $mod2 === "nullable") {
-            $relation->from = ["", Cardinality::ZeroOrOne];
+            $relation->from = ["", Multiplicity::ZeroOrOne];
         } else {
-            $relation->from = ["", Cardinality::One];
+            $relation->from = ["", Multiplicity::One];
         }
 
         if ($mod1 === "unique" || $mod2 === "unique") {
-            $relation->to = [$otherclassname, Cardinality::ZeroOrOne];
+            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
         } else {
-            $relation->to = [$otherclassname, Cardinality::Any];
+            $relation->to = [$otherclassname, Multiplicity::Any];
         }
 
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
@@ -594,19 +594,19 @@ class MigrationParser
 
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
-        $cardinality = Cardinality::One;
+        $multiplicity = Multiplicity::One;
         if ($fieldCopy->nullable) {
-            $cardinality = Cardinality::ZeroOrOne;
+            $multiplicity = Multiplicity::ZeroOrOne;
         }
 
-        $otherCardinality = Cardinality::Any;
+        $otherMultiplicity = Multiplicity::Any;
         if ($fieldCopy->unique) {
-            $otherCardinality = Cardinality::ZeroOrOne;
+            $otherMultiplicity = Multiplicity::ZeroOrOne;
         }
 
         $relation = new Relation();
-        $relation->from = ["", $cardinality];
-        $relation->to = [$otherclassname, $otherCardinality];
+        $relation->from = ["", $multiplicity];
+        $relation->to = [$otherclassname, $otherMultiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -648,19 +648,19 @@ class MigrationParser
             return;
         }
 
-        $cardinality = Cardinality::One;
+        $multiplicity = Multiplicity::One;
         if ($fieldCopy->nullable) {
-            $cardinality = Cardinality::ZeroOrOne;
+            $multiplicity = Multiplicity::ZeroOrOne;
         }
 
-        $otherCardinality = Cardinality::Any;
+        $otherMultiplicity = Multiplicity::Any;
         if ($fieldCopy->unique) {
-            $otherCardinality = Cardinality::ZeroOrOne;
+            $otherMultiplicity = Multiplicity::ZeroOrOne;
         }
 
         $relation = new Relation();
-        $relation->from = ["", $cardinality];
-        $relation->to = [$otherclass, $otherCardinality];
+        $relation->from = ["", $multiplicity];
+        $relation->to = [$otherclass, $otherMultiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -752,19 +752,19 @@ class MigrationParser
             return;
         }
 
-        $cardinality = Cardinality::One;
+        $multiplicity = Multiplicity::One;
         if ($fieldCopy->nullable) {
-            $cardinality = Cardinality::ZeroOrOne;
+            $multiplicity = Multiplicity::ZeroOrOne;
         }
 
-        $otherCardinality = Cardinality::Any;
+        $otherMultiplicity = Multiplicity::Any;
         if ($fieldCopy->unique) {
-            $otherCardinality = Cardinality::ZeroOrOne;
+            $otherMultiplicity = Multiplicity::ZeroOrOne;
         }
 
         $relation = new Relation();
-        $relation->from = ["", $cardinality];
-        $relation->to = [$otherclass, $otherCardinality];
+        $relation->from = ["", $multiplicity];
+        $relation->to = [$otherclass, $otherMultiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -927,8 +927,8 @@ class MigrationParser
 
             $relation = new Relation();
             // Cardinalities are always any to any because it's impossible to make sure that at least one relation exists to make it 1..*
-            $relation->from = [$classes[0], Cardinality::Any];
-            $relation->to = [$classes[1], Cardinality::Any];
+            $relation->from = [$classes[0], Multiplicity::Any];
+            $relation->to = [$classes[1], Multiplicity::Any];
             $relation->type = RelationType::Association;
 
             $schema->relations[] = $relation;
@@ -954,7 +954,7 @@ class MigrationParser
             }
 
             // if the field doesn't exist but a column it means that it refers to the fk to another class
-            // modify cardinality of relation
+            // modify multiplicity of relation
             if ($i >= count($class->fields)) {
 
 
@@ -972,20 +972,20 @@ class MigrationParser
 
                 if ($relation->from[0] === "") {
                     if ($m->unique) {
-                        $relation->to[1] = Cardinality::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->from[1] = Cardinality::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
                 } else {
                     // pretty sure this is unreachable code but just in case
                     if ($m->unique) {
-                        $relation->from[1] = Cardinality::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->to[1] = Cardinality::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
                 }
                 continue;
@@ -1027,7 +1027,7 @@ class MigrationParser
             }
 
             // if the field doesn't exist but a column does it means that it refers to the fk to another class
-            // modify cardinality of relation
+            // modify multiplicity of relation
             if ($i == count($class->fields)) {
                 if (!array_key_exists($fieldname, $relationIndexes)) {
                     continue;
@@ -1043,20 +1043,20 @@ class MigrationParser
 
                 if ($relation->from[0] === "") {
                     if ($m->unique) {
-                        $relation->to[1] = Cardinality::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->from[1] = Cardinality::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
                 } else {
                     // pretty sure this is unreachable code but just in case
                     if ($m->unique) {
-                        $relation->from[1] = Cardinality::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->to[1] = Cardinality::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
                 }
                 continue;

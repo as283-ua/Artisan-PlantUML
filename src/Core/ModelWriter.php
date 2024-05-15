@@ -3,7 +3,7 @@
 namespace As283\ArtisanPlantuml\Core;
 
 use As283\ArtisanPlantuml\Util\SchemaUtil;
-use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Multiplicity;
 use As283\PlantUmlProcessor\Model\Schema;
 use Illuminate\Console\Command;
 use Illuminate\Support\Pluralizer;
@@ -37,38 +37,38 @@ class ModelWriter
     }
 
     /**
-     * Get cardinality (hasOne, hasMany, belongsTo, belongsToMany) for Eloquent model specified by $cardinality1
-     * @param Cardinality $cardinality1
-     * @param Cardinality $cardinality2
+     * Get multiplicity (hasOne, hasMany, belongsTo, belongsToMany) for Eloquent model specified by $multiplicity1
+     * @param Multiplicity $multiplicity1
+     * @param Multiplicity $multiplicity2
      * @param string $className1
      * @param string $className2
      * @return string
      */
-    private static function getEloquentCardinality($cardinality1, $cardinality2, $className1, $className2)
+    private static function getEloquentMultiplicity($multiplicity1, $multiplicity2, $className1, $className2)
     {
         if (
-            in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne])
-            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])
+            in_array($multiplicity1, [Multiplicity::Any, Multiplicity::AtLeastOne])
+            && in_array($multiplicity2, [Multiplicity::Any, Multiplicity::AtLeastOne])
         ) {
             return "belongsToMany";
         }
 
         if (
-            in_array($cardinality1, [Cardinality::Any, Cardinality::AtLeastOne])
-            && in_array($cardinality2, [Cardinality::One, Cardinality::ZeroOrOne])
+            in_array($multiplicity1, [Multiplicity::Any, Multiplicity::AtLeastOne])
+            && in_array($multiplicity2, [Multiplicity::One, Multiplicity::ZeroOrOne])
         ) {
             return "hasMany";
         }
 
         if (
-            in_array($cardinality1, [Cardinality::One, Cardinality::ZeroOrOne])
-            && in_array($cardinality2, [Cardinality::Any, Cardinality::AtLeastOne])
+            in_array($multiplicity1, [Multiplicity::One, Multiplicity::ZeroOrOne])
+            && in_array($multiplicity2, [Multiplicity::Any, Multiplicity::AtLeastOne])
         ) {
             return "belongsTo";
         }
 
         if (
-            $cardinality1 === $cardinality2
+            $multiplicity1 === $multiplicity2
         ) {
             // FK is in the class alphabetically first
             if ($className1 < $className2) {
@@ -78,11 +78,11 @@ class ModelWriter
             }
         }
 
-        if ($cardinality1 === Cardinality::One) {
+        if ($multiplicity1 === Multiplicity::One) {
             return "belongsTo";
         }
 
-        // cardinality1 = zeroOne and cardinality2 = One -> 2 more restrictive, current model does not contain fk
+        // multiplicity1 = zeroOne and multiplicity2 = One -> 2 more restrictive, current model does not contain fk
         return "hasOne";
     }
 
@@ -114,26 +114,26 @@ class ModelWriter
                 $relatedClass = $schema->classes[$relatedClassName];
                 $relatedKeys = array_keys(SchemaUtil::classKeys($relatedClass));
 
-                $cardinality = SchemaUtil::getCardinality($className, $relation);
-                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+                $multiplicity = SchemaUtil::getMultiplicity($className, $relation);
+                $otherMultiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
 
-                $eloquentCardinality = self::getEloquentCardinality($cardinality, $otherCardinality, $className, $relatedClassName);
+                $eloquentMultiplicity = self::getEloquentMultiplicity($multiplicity, $otherMultiplicity, $className, $relatedClassName);
 
-                if ($eloquentCardinality !== "belongsToMany") {
-                    $modelContainsFK = $eloquentCardinality === "belongsTo";
+                if ($eloquentMultiplicity !== "belongsToMany") {
+                    $modelContainsFK = $eloquentMultiplicity === "belongsTo";
                     $foreignKey = $modelContainsFK ? strtolower($relatedClassName) . "_" . $relatedKeys[0] : strtolower($className) . "_" . $keys[0];
                     $primaryKey = $modelContainsFK ? $relatedKeys[0] : $keys[0];
-                    $methodName = in_array($eloquentCardinality, ["hasMany", "belongsToMany"]) ? Pluralizer::plural(strtolower($relatedClass->name)) : strtolower($relatedClass->name);
+                    $methodName = in_array($eloquentMultiplicity, ["hasMany", "belongsToMany"]) ? Pluralizer::plural(strtolower($relatedClass->name)) : strtolower($relatedClass->name);
                     $methodName = $methodName . $i;
                     if ($relatedKeys[0] != "id" || count($indexes) > 1) {
                         fwrite($file, "    public function " . $methodName . "()\n");
                         fwrite($file, "    {\n");
-                        fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class, '" . $foreignKey . $i . "', '" . $primaryKey . "');\n");
+                        fwrite($file, "        return \$this->" . $eloquentMultiplicity . "(" . self::modelName($relatedClass->name) . "::class, '" . $foreignKey . $i . "', '" . $primaryKey . "');\n");
                         fwrite($file, "    }\n\n");
                     } else {
                         fwrite($file, "    public function " . $methodName . "()\n");
                         fwrite($file, "    {\n");
-                        fwrite($file, "        return \$this->" . $eloquentCardinality . "(" . self::modelName($relatedClass->name) . "::class);\n");
+                        fwrite($file, "        return \$this->" . $eloquentMultiplicity . "(" . self::modelName($relatedClass->name) . "::class);\n");
                         fwrite($file, "    }\n\n");
                     }
                 } else {

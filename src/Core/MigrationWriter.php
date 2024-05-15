@@ -7,7 +7,7 @@ use Illuminate\Support\Pluralizer;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Schema;
 use As283\PlantUmlProcessor\Model\Type;
-use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Multiplicity;
 use As283\PlantUmlProcessor\Model\Relation;
 use Illuminate\Console\Command;
 
@@ -168,45 +168,45 @@ class MigrationWriter
                 }
                 $relation = $schema->relations[$index];
 
-                $cardinality = SchemaUtil::getCardinality($class->name, $relation);
-                $otherCardinality = SchemaUtil::getCardinality($relatedClassName, $relation);
+                $multiplicity = SchemaUtil::getMultiplicity($class->name, $relation);
+                $otherMultiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
 
-                // when a class is related to itself, choose the most restrictive cardinality for this iteration so that it doesn't skip the relation
+                // when a class is related to itself, choose the most restrictive multiplicity for this iteration so that it doesn't skip the relation
                 if ($class->name === $relatedClassName) {
-                    $cardinality = $relation->from[1];
-                    $otherCardinality = $relation->to[1];
+                    $multiplicity = $relation->from[1];
+                    $otherMultiplicity = $relation->to[1];
 
-                    if ((($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne) &&
-                            ($otherCardinality === Cardinality::One || $otherCardinality === Cardinality::ZeroOrOne)) ||
+                    if ((($multiplicity === Multiplicity::Any || $multiplicity === Multiplicity::AtLeastOne) &&
+                            ($otherMultiplicity === Multiplicity::One || $otherMultiplicity === Multiplicity::ZeroOrOne)) ||
 
-                        ($cardinality === Cardinality::ZeroOrOne  && $otherCardinality === Cardinality::One)
+                        ($multiplicity === Multiplicity::ZeroOrOne  && $otherMultiplicity === Multiplicity::One)
                     ) {
-                        $aux = $cardinality;
-                        $cardinality = $otherCardinality;
-                        $otherCardinality = $aux;
+                        $aux = $multiplicity;
+                        $multiplicity = $otherMultiplicity;
+                        $otherMultiplicity = $aux;
                     }
                 }
 
-                // Cardinality of many goes in another table, skip here
-                if ($cardinality == Cardinality::Any || $cardinality == Cardinality::AtLeastOne) {
+                // Multiplicity of many goes in another table, skip here
+                if ($multiplicity == Multiplicity::Any || $multiplicity == Multiplicity::AtLeastOne) {
                     continue;
                 }
 
                 if ($class->name !== $relatedClassName) {
                     // Fk goes in more restrictive table
-                    if ($cardinality == Cardinality::ZeroOrOne && $otherCardinality == Cardinality::One) {
+                    if ($multiplicity == Multiplicity::ZeroOrOne && $otherMultiplicity == Multiplicity::One) {
                         continue;
                     }
 
                     // Fk goes in table who is alphabetically first
-                    if ($cardinality === $otherCardinality && $relatedClassName < $class->name) {
+                    if ($multiplicity === $otherMultiplicity && $relatedClassName < $class->name) {
                         continue;
                     }
                 } else {
                     // set relation to the most restrictive one
-                    if ($otherCardinality == Cardinality::One) {
-                        $otherCardinality = $cardinality;
-                        $cardinality = Cardinality::One;
+                    if ($otherMultiplicity == Multiplicity::One) {
+                        $otherMultiplicity = $multiplicity;
+                        $multiplicity = Multiplicity::One;
                     }
                 }
 
@@ -220,8 +220,8 @@ class MigrationWriter
                     $otherClassPKs["id"] = Type::bigint;
                 }
 
-                $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
-                $nullable = $cardinality == Cardinality::ZeroOrOne;
+                $unique = in_array($otherMultiplicity, [Multiplicity::One, Multiplicity::ZeroOrOne]);
+                $nullable = $multiplicity == Multiplicity::ZeroOrOne;
 
                 if ($useForeignId) {
                     $unique = $unique ? "->unique()" : "";
@@ -329,27 +329,27 @@ class MigrationWriter
      */
     private static function writeUpAddFks($file, $relation, $otherClassKeys)
     {
-        $cardinality = $relation->from[1];
-        $otherCardinality = $relation->to[1];
+        $multiplicity = $relation->from[1];
+        $otherMultiplicity = $relation->to[1];
 
         $table = Pluralizer::plural(strtolower($relation->from[0]));
         $otherTable = Pluralizer::plural(strtolower($relation->to[0]));
 
-        if (Cardinality::compare($cardinality, $otherCardinality) === -1) {
-            $aux = $cardinality;
-            $cardinality = $otherCardinality;
-            $otherCardinality = $aux;
+        if (Multiplicity::compare($multiplicity, $otherMultiplicity) === -1) {
+            $aux = $multiplicity;
+            $multiplicity = $otherMultiplicity;
+            $otherMultiplicity = $aux;
 
             $table = strtolower($relation->to[0]);
             $otherTable = strtolower($relation->from[0]);
         }
 
-        // $cardinality is the more restrictive one
+        // $multiplicity is the more restrictive one
 
         fwrite($file, "        Schema::table('" . $table . "', function (Blueprint \$table) {\n");
 
-        $unique = in_array($otherCardinality, [Cardinality::One, Cardinality::ZeroOrOne]);
-        $nullable = $cardinality == Cardinality::ZeroOrOne;
+        $unique = in_array($otherMultiplicity, [Multiplicity::One, Multiplicity::ZeroOrOne]);
+        $nullable = $multiplicity == Multiplicity::ZeroOrOne;
 
         $otherUsesId = isset($otherClassPKs["id"]);
 
@@ -506,7 +506,7 @@ class MigrationWriter
      */
     public static function writeMissingRelation($relation, $schema, $index, $command)
     {
-        if ($relation->from[1] === Cardinality::One || $relation->from[1] === Cardinality::ZeroOrOne) {
+        if ($relation->from[1] === Multiplicity::One || $relation->from[1] === Multiplicity::ZeroOrOne) {
             $className = $relation->from[0];
             $otherClassName = $relation->to[0];
         } else {

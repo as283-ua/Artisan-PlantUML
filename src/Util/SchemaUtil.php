@@ -4,7 +4,7 @@ namespace As283\ArtisanPlantuml\Util;
 
 use As283\ArtisanPlantuml\Exceptions\CycleException;
 use As283\PlantUmlProcessor\Model\Schema;
-use As283\PlantUmlProcessor\Model\Cardinality;
+use As283\PlantUmlProcessor\Model\Multiplicity;
 use As283\PlantUmlProcessor\Model\ClassMetadata;
 use As283\PlantUmlProcessor\Model\Relation;
 use As283\PlantUmlProcessor\Model\Type;
@@ -125,8 +125,8 @@ class SchemaUtil
 
                     $relationData = $schema->relations[$relation["index"]];
 
-                    $cardinality = self::getCardinality($classname, $relationData);
-                    if ($cardinality === Cardinality::Any || $cardinality === Cardinality::AtLeastOne) {
+                    $multiplicity = self::getMultiplicity($classname, $relationData);
+                    if ($multiplicity === Multiplicity::Any || $multiplicity === Multiplicity::AtLeastOne) {
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -136,15 +136,15 @@ class SchemaUtil
                         continue;
                     }
 
-                    // find out if other class also has 0..1 or 1 cardinality
-                    $otherCardinality = self::getCardinality($relation["class"], $relationData);
+                    // find out if other class also has 0..1 or 1 multiplicity
+                    $otherMultiplicity = self::getMultiplicity($relation["class"], $relationData);
 
-                    if ($cardinality === Cardinality::ZeroOrOne && $otherCardinality === Cardinality::One) {
+                    if ($multiplicity === Multiplicity::ZeroOrOne && $otherMultiplicity === Multiplicity::One) {
                         $relation["resolved"] = true;
                         continue;
                     }
 
-                    if ($cardinality === $otherCardinality && $relation["class"] < $classname) {
+                    if ($multiplicity === $otherMultiplicity && $relation["class"] < $classname) {
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -193,12 +193,12 @@ class SchemaUtil
     }
 
     /**
-     * Get the cardinality of a relation
+     * Get the multiplicity of a relation
      * @param string $className
      * @param Relation $relation
-     * @return Cardinality|null
+     * @return Multiplicity|null
      */
-    public static function getCardinality($class, $relation)
+    public static function getMultiplicity($class, $relation)
     {
         if ($relation->from[0] === $class) {
             return $relation->from[1];

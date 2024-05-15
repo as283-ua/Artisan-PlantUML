@@ -1,0 +1,24 @@
+@startuml
+class A {
+  foobar: string
+  baz: int
+}
+
+class B{
+  > foo: string
+  > bar: int
+}
+
+class C{
+  something: string
+  other: int
+}
+
+A "*" -> "1" B
+A "0..1" -> "1" B
+A "0..1" -> "0..1" B
+B "1" -> "1" C
+C "1" -> "0..1" C
+C "0..1" -> "0..1" C
+C "*" -- "0..1" A
+@enduml

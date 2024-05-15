@@ -4,25 +4,26 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "386479af1ab54d8a3784422c4d613926",
+    "content-hash": "c9b24986904250e33f4926e7ecfdb93b",
     "packages": [
         {
             "name": "as283/plant-uml-processor",
-            "version": "v0.1.0",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/as283-ua/PlantUML-Processor.git",
-                "reference": "6af19f82b9eeff38747d306e90e7a958ff55b28c"
+                "reference": "5bb72217fad2f3ec3fd7a5c1c063b9e074073d4d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/as283-ua/PlantUML-Processor/zipball/6af19f82b9eeff38747d306e90e7a958ff55b28c",
-                "reference": "6af19f82b9eeff38747d306e90e7a958ff55b28c",
+                "url": "https://api.github.com/repos/as283-ua/PlantUML-Processor/zipball/5bb72217fad2f3ec3fd7a5c1c063b9e074073d4d",
+                "reference": "5bb72217fad2f3ec3fd7a5c1c063b9e074073d4d",
                 "shasum": ""
             },
             "require-dev": {
                 "phpunit/phpunit": "^10.5"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -52,10 +53,10 @@
             ],
             "description": "Library for serializing and parsing PlantUML class diagrams.",
             "support": {
-                "source": "https://github.com/as283-ua/PlantUML-Processor/tree/v0.1.0",
+                "source": "https://github.com/as283-ua/PlantUML-Processor/tree/main",
                 "issues": "https://github.com/as283-ua/PlantUML-Processor/issues"
             },
-            "time": "2024-05-13T17:04:05+00:00"
+            "time": "2024-05-15T23:25:50+00:00"
         }
     ],
     "packages-dev": [
@@ -3074,16 +3075,16 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "1.11.0",
+            "version": "1.11.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan.git",
-                "reference": "666cb1703742cea9cc80fee631f0940e1592fa6e"
+                "reference": "e524358f930e41a2b4cca1320e3b04fc26b39e0b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/666cb1703742cea9cc80fee631f0940e1592fa6e",
-                "reference": "666cb1703742cea9cc80fee631f0940e1592fa6e",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/e524358f930e41a2b4cca1320e3b04fc26b39e0b",
+                "reference": "e524358f930e41a2b4cca1320e3b04fc26b39e0b",
                 "shasum": ""
             },
             "require": {
@@ -3128,7 +3129,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-05-13T06:02:22+00:00"
+            "time": "2024-05-15T08:00:59+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -8505,7 +8506,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "as283/plant-uml-processor": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": [],
