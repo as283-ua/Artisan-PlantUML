@@ -168,8 +168,8 @@ class MigrationWriter
                 }
                 $relation = $schema->relations[$index];
 
-                $multiplicity = SchemaUtil::getMultiplicity($class->name, $relation);
-                $otherMultiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
+                $otherMultiplicity = SchemaUtil::getMultiplicity($class->name, $relation);
+                $multiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
 
                 // when a class is related to itself, choose the most restrictive multiplicity for this iteration so that it doesn't skip the relation
                 if ($class->name === $relatedClassName) {
@@ -329,8 +329,8 @@ class MigrationWriter
      */
     private static function writeUpAddFks($file, $relation, $otherClassKeys)
     {
-        $multiplicity = $relation->from[1];
-        $otherMultiplicity = $relation->to[1];
+        $otherMultiplicity = $relation->from[1];
+        $multiplicity = $relation->to[1];
 
         $table = Pluralizer::plural(strtolower($relation->from[0]));
         $otherTable = Pluralizer::plural(strtolower($relation->to[0]));
@@ -411,7 +411,7 @@ class MigrationWriter
                 fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columnName . "');\n");
             }
         } else {
-            fwrite($file, "            \$table->dropForeign(['{$otherTable}_" . $columns . "]');\n");
+            fwrite($file, "            \$table->dropForeign(['{$otherTable}_" . $columns . "']);\n");
             fwrite($file, "            \$table->dropColumn('{$otherTable}_" . $columns . "');\n");
         }
         fwrite($file, "        });\n");
@@ -507,11 +507,11 @@ class MigrationWriter
     public static function writeMissingRelation($relation, $schema, $index, $command)
     {
         if ($relation->from[1] === Multiplicity::One || $relation->from[1] === Multiplicity::ZeroOrOne) {
-            $className = $relation->from[0];
-            $otherClassName = $relation->to[0];
-        } else {
             $className = $relation->to[0];
             $otherClassName = $relation->from[0];
+        } else {
+            $className = $relation->from[0];
+            $otherClassName = $relation->to[0];
         }
 
         $tableName = Pluralizer::plural(strtolower($className));

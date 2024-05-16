@@ -112,6 +112,7 @@ class FromPUML extends Command implements PromptsForMissingInput
         // Write missing relations
         if (!$this->option('no-migrations')) {
             foreach ($missingRelations as $relation) {
+                print_r($relation);
                 MigrationWriter::writeMissingRelation($relation, $schema, $i, $this);
                 $i++;
             }

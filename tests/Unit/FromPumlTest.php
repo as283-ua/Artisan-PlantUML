@@ -92,6 +92,17 @@ class FromPumlTest extends TestCase
         $this->assertEquals(2, $migrationCount);
     }
 
+    public function testMigrationsManyToMany()
+    {
+        $this->cleanOutFiles();
+
+        $this->artisan("make:from-puml tests/Unit/Resources/diagrams/manyToMany.puml --no-models --path-migrations=" . self::OUT_DIR . "/migrations")->assertExitCode(0);
+
+        $migrationCount = count(glob(self::OUT_DIR . "/migrations" . "/*"));
+
+        $this->assertEquals(3, $migrationCount);
+    }
+
     public function testMigrationComplexRelations()
     {
         $this->cleanOutFiles();
