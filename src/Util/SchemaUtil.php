@@ -55,12 +55,6 @@ class SchemaUtil
         return $classMap;
     }
 
-    private static function printClassMap(&$classMap)
-    {
-        echo json_encode($classMap, JSON_PRETTY_PRINT) . "\n";
-    }
-
-
     /**
      * @param Schema $schema
      * @return array Element at index 0 is an array<string> with the class names in order. Element at index 1 is an array<Relation> with the relations that were removed and their value.
@@ -126,7 +120,9 @@ class SchemaUtil
                     $relationData = $schema->relations[$relation["index"]];
 
                     $multiplicity = self::getMultiplicity($classname, $relationData);
-                    if ($multiplicity === Multiplicity::Any || $multiplicity === Multiplicity::AtLeastOne) {
+                    $otherMultiplicity = self::getMultiplicity($relation["class"], $relationData);
+
+                    if ($otherMultiplicity === Multiplicity::Any || $otherMultiplicity === Multiplicity::AtLeastOne) {
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -136,15 +132,13 @@ class SchemaUtil
                         continue;
                     }
 
-                    // find out if other class also has 0..1 or 1 multiplicity
-                    $otherMultiplicity = self::getMultiplicity($relation["class"], $relationData);
 
-                    if ($multiplicity === Multiplicity::ZeroOrOne && $otherMultiplicity === Multiplicity::One) {
+                    if ($otherMultiplicity === Multiplicity::ZeroOrOne && $multiplicity === Multiplicity::One) {
                         $relation["resolved"] = true;
                         continue;
                     }
 
-                    if ($multiplicity === $otherMultiplicity && $relation["class"] < $classname) {
+                    if ($otherMultiplicity === $multiplicity && $relation["class"] < $classname) {
                         $relation["resolved"] = true;
                         continue;
                     }
@@ -178,18 +172,6 @@ class SchemaUtil
         }
 
         return [$orderedClasses, $conflictingRelations];
-    }
-
-
-    /**
-     * @param Relation $relation1
-     * @param Relation $relation2
-     * @return bool
-     */
-    public static function sameRelationSources($relation1, $relation2)
-    {
-        return ($relation1->from[0] === $relation2->from[0] && $relation1->to[0] === $relation2->to[0]) ||
-            ($relation1->from[0] === $relation2->to[0] && $relation1->to[0] === $relation2->from[0]);
     }
 
     /**

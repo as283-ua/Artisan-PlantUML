@@ -42,7 +42,7 @@ class Estado{
 }
 
 
-Direccion "1" -- "0, 1" Usuario
+Direccion "0..1" -- "1" Usuario
 Usuario "*" -- "1" Rol
 Direccion "0..1" -- "*" Envio: origen
 Direccion "1" -- "*" Envio: destino
@@ -50,11 +50,5 @@ Envio "*" -- "1" Usuario: repartidor
 Envio "1" -- "*" Historico
 Historico "*" -- "1" Estado
 Envio "*" -- "*" Tarifa
-
-
-
-
-
-
 
 @enduml

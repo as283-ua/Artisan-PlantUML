@@ -70,7 +70,7 @@ class FromPumlTest extends TestCase
         $this->assertEquals(8, $migrationCount);
     }
 
-    public function testMigrationBigOnlyIds()
+    public function testMigrationOnlyIdsBig()
     {
         $this->cleanOutFiles();
 
