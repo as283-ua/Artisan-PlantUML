@@ -438,14 +438,14 @@ class MigrationParser
 
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
-        $multiplicity = Multiplicity::One;
+        $otherMultiplicity = Multiplicity::One;
         if ($fieldCopy->nullable) {
-            $multiplicity = Multiplicity::ZeroOrOne;
+            $otherMultiplicity = Multiplicity::ZeroOrOne;
         }
 
-        $otherMultiplicity = Multiplicity::Any;
+        $multiplicity = Multiplicity::Any;
         if ($fieldCopy->unique) {
-            $otherMultiplicity = Multiplicity::ZeroOrOne;
+            $multiplicity = Multiplicity::ZeroOrOne;
         }
 
         $relation = new Relation();
@@ -475,9 +475,9 @@ class MigrationParser
         $otherclassname = Str::singular(ucfirst($class_pk[0]));
 
         $relation = new Relation();
-        $relation->from = ["", Multiplicity::One];
+        $relation->from = ["", Multiplicity::Any];
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
-        $relation->to = [$otherclassname, Multiplicity::Any];
+        $relation->to = [$otherclassname, Multiplicity::One];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -503,15 +503,15 @@ class MigrationParser
 
         $relation = new Relation();
         if ($mod === "nullable") {
-            $relation->from = ["", Multiplicity::ZeroOrOne];
+            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
         } else {
-            $relation->from = ["", Multiplicity::One];
+            $relation->to = [$otherclassname, Multiplicity::One];
         }
 
         if ($mod === "unique") {
-            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
+            $relation->from = ["", Multiplicity::ZeroOrOne];
         } else {
-            $relation->to = [$otherclassname, Multiplicity::Any];
+            $relation->from = ["", Multiplicity::Any];
         }
 
         $relation->type = RelationType::Association;
@@ -540,15 +540,15 @@ class MigrationParser
 
         $relation = new Relation();
         if ($mod1 === "nullable" || $mod2 === "nullable") {
-            $relation->from = ["", Multiplicity::ZeroOrOne];
+            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
         } else {
-            $relation->from = ["", Multiplicity::One];
+            $relation->to = [$otherclassname, Multiplicity::One];
         }
 
         if ($mod1 === "unique" || $mod2 === "unique") {
-            $relation->to = [$otherclassname, Multiplicity::ZeroOrOne];
+            $relation->from = ["", Multiplicity::ZeroOrOne];
         } else {
-            $relation->to = [$otherclassname, Multiplicity::Any];
+            $relation->from = ["", Multiplicity::Any];
         }
 
         // we can't know if the other must have at least one, that is defined in the program logic, not db specification
@@ -605,8 +605,8 @@ class MigrationParser
         }
 
         $relation = new Relation();
-        $relation->from = ["", $multiplicity];
-        $relation->to = [$otherclassname, $otherMultiplicity];
+        $relation->from = ["", $otherMultiplicity];
+        $relation->to = [$otherclassname, $multiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -659,8 +659,8 @@ class MigrationParser
         }
 
         $relation = new Relation();
-        $relation->from = ["", $multiplicity];
-        $relation->to = [$otherclass, $otherMultiplicity];
+        $relation->from = ["", $otherMultiplicity];
+        $relation->to = [$otherclass, $multiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -763,8 +763,8 @@ class MigrationParser
         }
 
         $relation = new Relation();
-        $relation->from = ["", $multiplicity];
-        $relation->to = [$otherclass, $otherMultiplicity];
+        $relation->from = ["", $otherMultiplicity];
+        $relation->to = [$otherclass, $multiplicity];
         $relation->type = RelationType::Association;
 
         $schema->relations[] = $relation;
@@ -972,20 +972,20 @@ class MigrationParser
 
                 if ($relation->from[0] === "") {
                     if ($m->unique) {
-                        $relation->to[1] = Multiplicity::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->from[1] = Multiplicity::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
                 } else {
                     // pretty sure this is unreachable code but just in case
                     if ($m->unique) {
-                        $relation->from[1] = Multiplicity::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->to[1] = Multiplicity::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
                 }
                 continue;
@@ -1043,20 +1043,20 @@ class MigrationParser
 
                 if ($relation->from[0] === "") {
                     if ($m->unique) {
-                        $relation->to[1] = Multiplicity::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->from[1] = Multiplicity::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
                 } else {
                     // pretty sure this is unreachable code but just in case
                     if ($m->unique) {
-                        $relation->from[1] = Multiplicity::ZeroOrOne;
+                        $relation->to[1] = Multiplicity::ZeroOrOne;
                     }
 
                     if ($m->nullable) {
-                        $relation->to[1] = Multiplicity::ZeroOrOne;
+                        $relation->from[1] = Multiplicity::ZeroOrOne;
                     }
                 }
                 continue;
