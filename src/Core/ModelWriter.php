@@ -114,8 +114,8 @@ class ModelWriter
                 $relatedClass = $schema->classes[$relatedClassName];
                 $relatedKeys = array_keys(SchemaUtil::classKeys($relatedClass));
 
-                $multiplicity = SchemaUtil::getMultiplicity($className, $relation);
-                $otherMultiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
+                $otherMultiplicity = SchemaUtil::getMultiplicity($className, $relation);
+                $multiplicity = SchemaUtil::getMultiplicity($relatedClassName, $relation);
 
                 $eloquentMultiplicity = self::getEloquentMultiplicity($multiplicity, $otherMultiplicity, $className, $relatedClassName);
 
