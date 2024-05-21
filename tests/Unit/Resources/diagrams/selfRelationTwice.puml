@@ -1,0 +1,10 @@
+@startuml
+class A {
+  foobar: string
+  baz: int
+}
+
+A "1" -- "*" A
+A "1" -- "0..1" A
+
+@enduml
