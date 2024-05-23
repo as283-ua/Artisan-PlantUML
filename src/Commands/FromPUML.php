@@ -89,7 +89,7 @@ class FromPUML extends Command implements PromptsForMissingInput
                 MigrationWriter::write($className, $schema, $i, $this);
             }
 
-            if (!$this->option('no-models')) {
+            if (!$this->option('no-models') && !$this->option('use-composite-keys')) {
                 ModelWriter::write($className, $schema, $this);
             }
             $i++;
