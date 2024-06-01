@@ -67,6 +67,8 @@ class FromPUML extends Command implements PromptsForMissingInput
             return 1;
         }
 
+        $schemaOriginal = clone ($schema);
+
         if ($schema == null) {
             $this->error("Parsing error. Invalid PlantUML file. You can check what the problem is using the online PlantUML web server: https://www.plantuml.com/plantuml/uml");
             return 1;
@@ -90,7 +92,7 @@ class FromPUML extends Command implements PromptsForMissingInput
             }
 
             if (!$this->option('no-models') && !$this->option('use-composite-keys')) {
-                ModelWriter::write($className, $schema, $this);
+                ModelWriter::write($className, $schemaOriginal, $this);
             }
             $i++;
         }
